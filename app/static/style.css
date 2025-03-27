@@ -1,0 +1,257 @@
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f0f2f5;
+    display: flex;
+    justify-content: center;
+}
+
+.main-container {
+    max-width: 1000px;
+    width: 100%;
+    padding: 20px;
+    margin-top: 20px;
+}
+
+.card {
+    background-color: white;
+    border-radius: 8px;
+    padding: 25px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+}
+
+h1, h2 {
+    color: #333;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+    margin-top: 0;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #555;
+}
+
+input[type="file"], textarea {
+    width: calc(100% - 22px); /* Uwzględnia padding */
+    padding: 10px;
+    margin-bottom: 15px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1rem;
+    box-sizing: border-box; /* Zapobiega rozszerzaniu poza kontener */
+}
+
+textarea {
+    height: 120px;
+    resize: vertical;
+}
+
+.btn {
+    padding: 12px 20px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.2s ease;
+    display: inline-block; /* Umożliwia centrowanie jeśli trzeba */
+}
+
+.btn:hover {
+    background-color: #0056b3;
+}
+
+.btn:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
+
+.btn-secondary {
+    background-color: #6c757d;
+}
+
+.btn-secondary:hover {
+    background-color: #5a6268;
+}
+
+.file-upload {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.files-list {
+    margin-top: 15px;
+    max-height: 150px;
+    overflow-y: auto;
+    background: #f9f9f9;
+    padding: 10px;
+    border-radius: 4px;
+    border: 1px dashed #ddd;
+    min-height: 40px; /* Minimalna wysokość, żeby było widać ramkę */
+}
+
+.file-entry {
+    background-color: #e9ecef;
+    padding: 8px 12px;
+    margin: 5px 0;
+    border-radius: 3px;
+    font-size: 0.9em;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.file-entry span {
+    word-break: break-all;
+    padding-right: 10px;
+}
+
+.file-entry .status {
+    white-space: nowrap; /* Zapobiega zawijaniu statusu */
+    margin-left: auto; /* Przesuwa status na prawo */
+    padding-left: 10px;
+}
+
+
+.loading {
+    display: none; /* Ukryty domyślnie */
+    text-align: center;
+    padding: 30px 0;
+}
+
+.spinner {
+    border: 5px solid #f3f3f3; /* Light grey */
+    border-top: 5px solid #3498db; /* Blue */
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 15px auto;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.response-section {
+    margin-top: 20px;
+}
+
+.module-response {
+    margin-bottom: 20px;
+    padding: 20px;
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 5px;
+}
+
+.response-header {
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #0056b3;
+    font-size: 1.1em;
+}
+
+/* Renderowanie Markdown w odpowiedziach */
+.response-content {
+    white-space: pre-wrap; /* Zachowuje białe znaki i zawija wiersze */
+    word-wrap: break-word; /* Łamie długie słowa */
+    font-size: 0.95em;
+    line-height: 1.6;
+}
+
+.response-content h1,
+.response-content h2,
+.response-content h3,
+.response-content h4,
+.response-content h5,
+.response-content h6 {
+    border-bottom: none;
+    padding-bottom: 0;
+    margin-top: 1.2em;
+    margin-bottom: 0.6em;
+    line-height: 1.3;
+}
+
+.response-content p {
+    margin: 0.8em 0;
+}
+
+.response-content ul,
+.response-content ol {
+    margin: 0.8em 0 0.8em 2em;
+    padding-left: 0; /* Reset domyślnego paddingu */
+}
+.response-content li {
+    margin-bottom: 0.4em;
+}
+
+.response-content code {
+    background-color: #e9ecef;
+    padding: 0.2em 0.4em;
+    border-radius: 3px;
+    font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+    font-size: 0.9em;
+}
+
+.response-content pre {
+    background-color: #f0f0f0;
+    padding: 15px;
+    border-radius: 4px;
+    overflow-x: auto; /* Umożliwia przewijanie poziome */
+    border: 1px solid #ddd;
+}
+
+.response-content pre code {
+    display: block;
+    padding: 0;
+    background-color: transparent;
+    color: inherit;
+    border-radius: 0;
+    border: none;
+    white-space: pre; /* Zachowuje białe znaki wewnątrz pre */
+    font-size: 0.85em;
+}
+
+.response-content blockquote {
+    border-left: 4px solid #ccc;
+    padding-left: 15px;
+    margin-left: 0;
+    color: #666;
+}
+
+.response-content table {
+    border-collapse: collapse;
+    margin: 1em 0;
+    width: auto;
+}
+
+.response-content th,
+.response-content td {
+    border: 1px solid #ddd;
+    padding: 8px 12px;
+    text-align: left;
+}
+
+.response-content th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+}
+
+.error-message {
+    color: #dc3545;
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    padding: 15px;
+    border-radius: 4px;
+    margin-top: 15px;
+}
