@@ -2,17 +2,26 @@
 <html lang="pl">
 <head>
     <meta charset="UTF-8">
-    <title>Multi-Module AI Agent</title>
+    <title>AI Agent - Pixel Pasta</title>
     <!-- Link do zewnętrznego pliku CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <!-- Biblioteka do renderowania Markdown po stronie klienta -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Czcionka Pixel -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="main-container">
-        <div class="card">
-            <h1><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMwMDdiZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1ib3QtbWVzc2FnZS1zcXVhcmUiPjxwYXRoIGQ9Ik0xMiA2VjJIOCIvPjxwYXRoIGQ9Im04IDYtNiA2djRoNiIvPjxyZWN0IHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIgeD0iMyIgeT0iMyIgcng9IjIiLz48cGF0aCBkPSJNOCAxdjIiLz48cGF0aCBkPSJNMTYgMXYyIi8+PC9zdmc+" alt="AI Icon" style="vertical-align: middle; margin-right: 8px; height: 24px;">Multi-Module AI Agent</h1>
-             <p>Asystent AI do złożonych zadań. Wprowadź zapytanie i opcjonalnie dodaj pliki jako kontekst.</p>
+    <div class="pixel-background">
+        <div class="header-banner">
+            <div class="pixel-title">AI AGENT</div>
+        </div>
+        
+        <div class="main-container">
+            <div class="card">
+                <div class="card-header">
+                    <h1>AI AGENT - PIXEL PASTA</h1>
+                </div>
+                <p>Asystent AI do złożonych zadań. Wprowadź zapytanie i opcjonalnie dodaj pliki jako kontekst.</p>
              <div class="api-key-section">
                  <label for="apiKeyInput">Klucz API OpenRouter:</label>
                  <input type="password" id="apiKeyInput" placeholder="Wklej swój klucz API tutaj...">
@@ -21,7 +30,9 @@
         </div>
 
         <div class="card file-upload">
-            <h2>Załaduj dokumenty (Opcjonalnie)</h2>
+            <div class="card-header">
+                <h2>Załaduj dokumenty</h2>
+            </div>
             <p>Obsługiwane formaty: PDF, TXT, JPG, PNG, MD. Maks. 4 pliki.</p>
             <input type="file" id="documentUpload" accept=".pdf,.txt,.jpg,.jpeg,.png,.md" multiple>
             <button class="btn" onclick="handleFileUpload()">Przetwórz wybrane pliki</button>
@@ -29,14 +40,16 @@
         </div>
 
         <div class="card query-section">
-            <h2>Zapytanie / Polecenie</h2>
+            <div class="card-header">
+                <h2>Zapytanie / Polecenie</h2>
+            </div>
             <textarea id="queryInput" placeholder="Wprowadź swoje pytanie, polecenie lub problem do rozwiązania tutaj..."></textarea>
             <button class="btn" onclick="sendQuery()">Wyślij zapytanie do Agenta AI</button>
         </div>
 
         <div class="loading" id="loadingIndicator">
-            <div class="spinner"></div>
-            <p>Agent AI przetwarza Twoje zapytanie...</p>
+            <div class="pixel-spinner"></div>
+            <p class="pixel-text">Agent AI przetwarza Twoje zapytanie...</p>
             <p id="loadingStatus"></p>
         </div>
 
@@ -45,11 +58,13 @@
         </div>
 
         <div class="card response-section" id="responseContainer" style="display: none;">
-            <h2>Odpowiedź Agenta AI</h2>
+            <div class="card-header">
+                <h2>Odpowiedź Agenta AI</h2>
+            </div>
             <div id="pipelineSteps"></div>
             <hr style="margin: 25px 0; border: 0; border-top: 1px solid #eee;">
             <div class="module-response" id="finalResponseCard">
-                <div class="response-header">Odpowiedź Końcowa</div>
+                <div class="response-header pixel-text">Odpowiedź Końcowa</div>
                 <div class="response-content" id="finalResponse"></div>
             </div>
         </div>
