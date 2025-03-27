@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 import traceback
 import json
-from flask import request, render_template, jsonify, current_app, Blueprint # Dodano Blueprint
-import pytesseract # Import potrzebny do łapania wyjątku
+import os  # Do obsługi zmiennych środowiskowych
+from flask import request, render_template, jsonify, current_app, Blueprint
+import pytesseract
 
-# Usunięto import create_app - nie będzie już potrzebny w tym pliku
-from .utils import process_uploaded_file, call_openrouter_api, MAX_DOCUMENT_CHARS
+# Importy z lokalnych modułów
+from .utils import process_uploaded_file, call_openrouter_api, call_google_gemini_api, MAX_DOCUMENT_CHARS
 from .prompts import (
     QUERY_ANALYSIS_PROMPT_V2,
     RESPONSE_GENERATION_PROMPT_V2,
@@ -16,214 +17,250 @@ from .prompts import (
 # Tworzymy Blueprint
 main_bp = Blueprint('main', __name__, template_folder='templates', static_folder='static')
 
+# --- STAŁE KONFIGURACYJNE (Lepsze niż w środku funkcji) ---
+# Domyślne modele, jeśli analiza zawiedzie lub nie zwróci sugestii
+# Zaktualizowano zgodnie z nowymi wytycznymi
+DEFAULT_PERSPECTIVE_MODELS = [
+    {"model_id": "google/gemini-flash-1.5", "reason": "Szybki i wszechstronny model domyślny."},
+    {"model_id": "anthropic/claude-3-haiku", "reason": "Alternatywny, szybki model domyślny."},
+    {"model_id": "mistralai/mistral-7b-instruct", "reason": "Lekki model open-source jako trzecia opcja."},
+]
+MAX_PERSPECTIVES = 1 # Zmieniono na 1 zgodnie z nowymi wytycznymi
 
-@main_bp.route('/') # Zmieniono dekorator na Blueprint
+# Modele używane w stałych krokach - ZAKTUALIZOWANO
+ANALYSIS_MODEL = "openai/gpt-4o" # Model do analizy
+PERSPECTIVE_MODEL = "google/gemini-2.5-pro-exp-03-25:free" # Model do generowania perspektyw
+VERIFICATION_MODEL = "deepseek/deepseek-chat:free" # Model do weryfikacji
+SYNTHESIS_MODEL_ID = "gemini-pro" # Model do syntezy (używamy Gemini Pro 1.0 przez API Google)
+
+# Klucze API - ZAKTUALIZOWANO
+OPENAI_API_KEY = "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"
+GOOGLE_API_KEY = "AIzaSyC1OlGKsMrFS6ZgLCVy7MFeUJIr2TX-Hj4" # Zaktualizowany klucz Google
+
+@main_bp.route('/')
 def index():
     """Serwuje główną stronę aplikacji."""
-    # Używamy render_template zamiast render_template_string
     return render_template('index.html')
 
-@main_bp.route('/process_file', methods=['POST']) # Zmieniono dekorator na Blueprint
+@main_bp.route('/process_file', methods=['POST'])
 def process_file_endpoint():
-    """Endpoint do przetwarzania pojedynczego pliku przesłanego z frontendu."""
-    data = None # Zdefiniuj data przed blokiem try
+    """Endpoint do przetwarzania pojedynczego pliku."""
+    data = None
     try:
         data = request.json
         if not data or 'filename' not in data or 'file_data_base64' not in data:
              return jsonify({"error": "Nieprawidłowe dane wejściowe."}), 400
-
         filename = data['filename']
         file_data_base64 = data['file_data_base64']
-
-        # Używamy funkcji z utils.py
         content = process_uploaded_file(filename, file_data_base64)
-
         return jsonify({"content": content})
-
-    # Łapiemy konkretne wyjątki z utils.py
     except (ValueError, RuntimeError, pytesseract.TesseractNotFoundError) as e:
-        # Logowanie błędu może być bardziej rozbudowane
-        current_app.logger.error(f"Błąd przetwarzania pliku {data.get('filename', 'N/A') if data else 'N/A'}: {e}")
-        return jsonify({"error": str(e)}), 400 # Bad Request lub inny odpowiedni kod
+        filename_log = data.get('filename', 'N/A') if data else 'N/A'
+        current_app.logger.error(f"Błąd przetwarzania pliku {filename_log}: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 400
     except Exception as e:
         current_app.logger.error(f"Nieoczekiwany błąd w /process_file: {traceback.format_exc()}")
         return jsonify({"error": "Wystąpił nieoczekiwany błąd serwera podczas przetwarzania pliku."}), 500
 
-@main_bp.route('/process_query', methods=['POST']) # Zmieniono dekorator na Blueprint
+@main_bp.route('/process_query', methods=['POST'])
 def process_query_endpoint():
     """Główny endpoint przetwarzania zapytania przez pipeline AI."""
-    # Usunięto sprawdzanie klucza z konfiguracji serwera
-    # if not current_app.config['OPENROUTER_API_KEY']:
-    #     current_app.logger.error("Klucz API OpenRouter nie jest skonfigurowany na serwerze.")
-    #     return jsonify({"error": "Klucz API OpenRouter nie jest skonfigurowany na serwerze."}), 500
-
     try:
+        # Pobranie klucza OpenRouter z żądania
         data = request.json
-        if not data or 'query' not in data or 'api_key' not in data: # Sprawdź, czy klucz API jest w żądaniu
-             return jsonify({"error": "Brak zapytania lub klucza API w żądaniu."}), 400
+        if not data or 'query' not in data or 'api_key' not in data:
+             current_app.logger.warning("Otrzymano niekompletne żądanie do /process_query")
+             return jsonify({"error": "Brak zapytania lub klucza API (OpenRouter) w żądaniu."}), 400
 
         query = data['query']
-        api_key = data['api_key'] # Odczytaj klucz API z żądania
-        documents = data.get('documents', []) # Oczekujemy listy {name: string, content: string}
+        openrouter_api_key = data['api_key'] # Klucz OpenRouter od użytkownika
+        documents = data.get('documents', [])
 
-        if not api_key:
-             return jsonify({"error": "Klucz API nie może być pusty."}), 400
+        if not openrouter_api_key:
+             return jsonify({"error": "Klucz API (OpenRouter) nie może być pusty."}), 400
+        # --- Koniec walidacji i pobierania kluczy ---
 
-        # --- Przygotowanie danych dla modeli ---
+
+        # --- Przygotowanie Danych dla Modeli ---
         documents_summary = "Brak dodatkowych dokumentów."
-        if documents:
-            summaries = [
-                f"Dokument {i+1}: {doc.get('name', 'N/A')} (początek: {doc.get('content', '')[:100]}...)"
-                for i, doc in enumerate(documents) if isinstance(doc, dict)
-            ]
-            if summaries:
-                documents_summary = "\n".join(summaries)
-
         documents_content = "Brak dodatkowych dokumentów."
         if documents:
+            summaries = [f"Dokument {i+1}: {doc.get('name', 'N/A')} (początek: {doc.get('content', '')[:100]}...)"
+                         for i, doc in enumerate(documents) if isinstance(doc, dict)]
+            if summaries: documents_summary = "\n".join(summaries)
+
             contents = []
             for i, doc in enumerate(documents):
                  if isinstance(doc, dict):
                     doc_content = doc.get('content', '')
                     limited_content = doc_content[:MAX_DOCUMENT_CHARS]
-                    if len(doc_content) > MAX_DOCUMENT_CHARS:
-                        limited_content += "... (dokument skrócony)"
+                    if len(doc_content) > MAX_DOCUMENT_CHARS: limited_content += "... (dokument skrócony)"
                     contents.append(f"--- START Document {i+1}: {doc.get('name', 'N/A')} ---\n{limited_content}\n--- END Document {i+1} ---")
-            if contents:
-                documents_content = "\n\n".join(contents)
+            if contents: documents_content = "\n\n".join(contents)
+        # --- Koniec Przygotowania Danych ---
 
-        # --- Krok 1: Analiza zapytania ---
-        current_app.logger.info("Krok 1: Analiza zapytania...")
-        analysis_raw = call_openrouter_api(
-            api_key=api_key, # Przekaż klucz API
-            model="mistralai/mistral-7b-instruct", # Darmowy model
-            prompt_content=QUERY_ANALYSIS_PROMPT_V2.format(query=query, documents_summary=documents_summary)
+
+        # --- Krok 1: Analiza Zapytania ---
+        current_app.logger.info(f"Krok 1: Analiza zapytania (model: {ANALYSIS_MODEL})...")
+        analysis_prompt = QUERY_ANALYSIS_PROMPT_V2.format(
+            query=query,
+            documents_summary=documents_summary
         )
-        current_app.logger.info("Analiza zakończona.")
-
-        # Parsowanie JSON z analizy
-        suggested_models_list = []
+        analysis_raw = "{}" # Domyślna pusta odpowiedź
         try:
-            analysis_cleaned = analysis_raw.strip()
-            if analysis_cleaned.startswith("```json"):
-                analysis_cleaned = analysis_cleaned[7:-3].strip()
-            analysis_json = json.loads(analysis_cleaned)
-            if isinstance(analysis_json.get('suggested_models'), list):
-                 suggested_models_list = [m for m in analysis_json['suggested_models'] if isinstance(m, dict) and 'model_id' in m]
-            else:
-                 current_app.logger.warning("Klucz 'suggested_models' nie jest listą w odpowiedzi analizy.")
-        except json.JSONDecodeError as e:
-            current_app.logger.warning(f"Nie udało się sparsować JSON z analizy: {e}. Używam modeli domyślnych.")
+            # Używamy klucza OpenAI przez OpenRouter
+            analysis_raw = call_openrouter_api(
+                api_key=OPENAI_API_KEY, # Użyj stałego klucza OpenAI
+                model=ANALYSIS_MODEL,
+                prompt_content=analysis_prompt
+            )
+            current_app.logger.info("Analiza zakończona.")
         except Exception as e:
-             current_app.logger.error(f"Nieoczekiwany błąd przy przetwarzaniu analizy JSON: {e}")
+            current_app.logger.error(f"Błąd podczas kroku analizy (model: {ANALYSIS_MODEL}): {e}", exc_info=True)
+            analysis_raw = f'{{"error": "Błąd podczas analizy: {e}"}}' # Zwróć błąd jako JSON string
 
-        # Domyślne darmowe modele, jeśli brak sugestii
-        if not suggested_models_list:
-            current_app.logger.info("Używanie domyślnych (darmowych) modeli do generowania perspektyw.")
-            suggested_models_list = [
-                {"model_id": "mistralai/mistral-7b-instruct", "reason": "Szybki, darmowy (domyślny)"},
-                {"model_id": "google/gemma-7b-it", "reason": "Darmowy model Google (domyślny)"},
-                {"model_id": "nousresearch/nous-hermes-2-mixtral-8x7b-dpo", "reason": "Zaawansowany darmowy model (domyślny)"}
-            ]
 
-        # --- Krok 2: Generowanie Wieloperspektywiczne ---
-        models_to_use = suggested_models_list[:3]
-        current_app.logger.info(f"Krok 2: Generowanie perspektyw (modele: {[m.get('model_id', 'N/A') for m in models_to_use]})...")
+        # --- Parsowanie Wyników Analizy (niepotrzebne do wyboru modeli perspektyw) ---
+        analysis_json = None
+        try:
+            analysis_cleaned = analysis_raw.strip().removeprefix("```json").removesuffix("```").strip()
+            if analysis_cleaned:
+                analysis_json = json.loads(analysis_cleaned)
+        except Exception as e:
+            current_app.logger.warning(f"Nie udało się sparsować JSON z analizy: {e}. Surowa odpowiedź: '{analysis_raw[:200]}...'")
+        # --- Koniec Parsowania ---
+
+
+        # --- Krok 2: Generowanie Perspektywy ---
+        current_app.logger.info(f"Krok 2: Generowanie perspektywy (model: {PERSPECTIVE_MODEL})...")
         perspectives_results = []
+        specialization = "Zaawansowane rozumowanie i generowanie" # Można dostosować
+        perspective_prompt = None # Reset
+        try:
+            perspective_prompt = RESPONSE_GENERATION_PROMPT_V2.format(
+                model_name=PERSPECTIVE_MODEL,
+                specialization=specialization,
+                query=query,
+                analysis=analysis_raw, # Przekaż surową analizę
+                documents_content=documents_content
+            )
+            # Używamy klucza OpenRouter z UI dla Gemini Free
+            response = call_openrouter_api(
+                api_key=openrouter_api_key,
+                model=PERSPECTIVE_MODEL,
+                prompt_content=perspective_prompt
+            )
+            perspectives_results.append({
+                "model": PERSPECTIVE_MODEL,
+                "specialization": specialization,
+                "response": response,
+                "prompt": perspective_prompt
+            })
+            current_app.logger.info(f"  - Generowanie perspektywy (model: {PERSPECTIVE_MODEL}) zakończone.")
+        except Exception as e:
+             current_app.logger.error(f"  - Błąd generowania przez {PERSPECTIVE_MODEL}: {e}", exc_info=True)
+             perspectives_results.append({
+                "model": PERSPECTIVE_MODEL,
+                "specialization": specialization,
+                "response": f"BŁĄD: Nie udało się wygenerować odpowiedzi przez model {PERSPECTIVE_MODEL}.\nSzczegóły: {e}",
+                "prompt": perspective_prompt if perspective_prompt else "Błąd przed formatowaniem promptu"
+             })
+        current_app.logger.info("Generowanie perspektywy zakończone.")
+        # --- Koniec Generowania Perspektywy ---
 
-        # Uzupełnienie do 3 modeli, jeśli potrzeba
-        if len(models_to_use) < 3:
-            default_models_fallback = [
-                {"model_id": "mistralai/mistral-7b-instruct", "reason": "Domyślny darmowy fallback"},
-                {"model_id": "google/gemma-7b-it", "reason": "Domyślny darmowy fallback"},
-                {"model_id": "nousresearch/nous-hermes-2-mixtral-8x7b-dpo", "reason": "Domyślny darmowy fallback"}
-            ]
-            needed = 3 - len(models_to_use)
-            for dm in default_models_fallback:
-                if needed == 0: break
-                if not any(m.get('model_id') == dm['model_id'] for m in models_to_use):
-                    models_to_use.append(dm)
-                    needed -= 1
 
-        for model_info in models_to_use:
-            model_id = model_info.get('model_id', 'unknown-model')
-            specialization = model_info.get('reason', 'N/A')
-            current_app.logger.info(f"  - Generowanie przez: {model_id}")
-            try:
-                response = call_openrouter_api(
-                    api_key=api_key, # Przekaż klucz API
-                    model=model_id,
-                    prompt_content=RESPONSE_GENERATION_PROMPT_V2.format(
-                        model_name=model_id,
-                        specialization=specialization,
-                        query=query,
-                        analysis=analysis_raw,
-                        documents_content=documents_content
-                    )
-                )
-                perspectives_results.append({"model": model_id, "specialization": specialization, "response": response})
-            except Exception as e:
-                 current_app.logger.error(f"  - Błąd generowania przez {model_id}: {e}")
-                 perspectives_results.append({
-                    "model": model_id,
-                    "specialization": specialization,
-                    "response": f"BŁĄD: Nie udało się wygenerować odpowiedzi przez ten model.\nSzczegóły: {e}"
-                 })
-        current_app.logger.info("Generowanie perspektyw zakończone.")
+        # --- Przygotowanie Danych do Kroków 3 i 4 ---
+        # Uzupełniamy listę `perspectives_results` do 3 elementów (dla spójności promptu weryfikacji)
+        padded_perspectives = perspectives_results[:]
+        while len(padded_perspectives) < 3:
+            padded_perspectives.append({"model": "N/A", "specialization": "N/A", "response": "Brak danych (nie generowano).", "prompt": "N/A"})
+        final_perspectives_for_processing = padded_perspectives[:3]
+        # --- Koniec Przygotowania Danych ---
 
-        # Uzupełnienie do 3 wyników, jeśli były błędy
-        while len(perspectives_results) < 3:
-            perspectives_results.append({"model": "N/A", "specialization": "N/A", "response": "Brak odpowiedzi."})
-
-        perspectives_summary_for_prompt = "\n\n".join([
-            f"--- START PERSPECTIVE {i+1} ({p['model']} - {p['specialization']}) ---\n{p['response']}\n--- END PERSPECTIVE {i+1} ---"
-            for i, p in enumerate(perspectives_results[:3])
-        ])
 
         # --- Krok 3: Weryfikacja Odpowiedzi ---
-        current_app.logger.info("Krok 3: Weryfikacja odpowiedzi...")
-        verification_report = call_openrouter_api(
-            api_key=api_key, # Przekaż klucz API
-            model="nousresearch/nous-hermes-2-mixtral-8x7b-dpo", # Darmowy model
-            prompt_content=VERIFICATION_PROMPT_V2.format(
-                query=query,
-                model_1_name=perspectives_results[0]['model'],
-                model_1_spec=perspectives_results[0]['specialization'],
-                perspective_1_response=perspectives_results[0]['response'],
-                model_2_name=perspectives_results[1]['model'],
-                model_2_spec=perspectives_results[1]['specialization'],
-                perspective_2_response=perspectives_results[1]['response'],
-                model_3_name=perspectives_results[2]['model'],
-                model_3_spec=perspectives_results[2]['specialization'],
-                perspective_3_response=perspectives_results[2]['response']
+        current_app.logger.info(f"Krok 3: Weryfikacja odpowiedzi (model: {VERIFICATION_MODEL})...")
+        verification_prompt = None # Reset
+        verification_report = f"BŁĄD: Nie udało się przeprowadzić weryfikacji." # Domyślny błąd
+        try:
+            verification_args = {'query': query}
+            for i, p in enumerate(final_perspectives_for_processing):
+                idx = i + 1
+                verification_args[f'model_{idx}_name'] = p.get('model', 'N/A')
+                verification_args[f'model_{idx}_spec'] = p.get('specialization', 'N/A')
+                verification_args[f'perspective_{idx}_response'] = p.get('response', 'Brak')
+
+            verification_prompt = VERIFICATION_PROMPT_V2.format(**verification_args)
+            # Używamy klucza OpenRouter z UI dla Deepseek Free
+            verification_report = call_openrouter_api(
+                api_key=openrouter_api_key,
+                model=VERIFICATION_MODEL,
+                prompt_content=verification_prompt
             )
-        )
-        current_app.logger.info("Weryfikacja zakończona.")
+            current_app.logger.info("Weryfikacja zakończona.")
+        except Exception as e:
+             current_app.logger.error(f"Błąd podczas kroku weryfikacji (model: {VERIFICATION_MODEL}): {e}", exc_info=True)
+             verification_prompt = verification_prompt if verification_prompt else "Błąd formatowania promptu weryfikacji"
+             verification_report = f"BŁĄD: Nie udało się przeprowadzić weryfikacji.\nSzczegóły: {e}"
+        # --- Koniec Weryfikacji ---
+
 
         # --- Krok 4: Synteza i Konkluzja ---
-        current_app.logger.info("Krok 4: Synteza odpowiedzi końcowej...")
-        final_response = call_openrouter_api(
-            api_key=api_key, # Przekaż klucz API
-            model="nousresearch/nous-hermes-2-mixtral-8x7b-dpo", # Najlepszy darmowy
-            prompt_content=SYNTHESIS_PROMPT_V2.format(
-                query=query,
-                perspectives_summary=perspectives_summary_for_prompt,
-                verification_report=verification_report
+        current_app.logger.info(f"Krok 4: Synteza odpowiedzi końcowej (model: {SYNTHESIS_MODEL_ID})...")
+        synthesis_prompt = None # Reset
+        final_response = f"BŁĄD: Nie udało się przeprowadzić syntezy odpowiedzi." # Domyślny błąd
+        try:
+            # Przygotuj podsumowanie perspektyw (teraz tylko jednej, ale prompt oczekuje struktury)
+            perspectives_summary_for_prompt = "\n\n".join([
+                 f"--- START PERSPECTIVE {i+1} ({p.get('model', 'N/A')} - {p.get('specialization', 'N/A')}) ---\n{p.get('response', 'Brak')}\n--- END PERSPECTIVE {i+1} ---"
+                 for i, p in enumerate(final_perspectives_for_processing) # Używamy uzupełnionej listy
+            ])
+            synthesis_prompt = SYNTHESIS_PROMPT_V2.format(
+                    query=query,
+                    perspectives_summary=perspectives_summary_for_prompt,
+                    verification_report=verification_report
+                )
+            # Używamy dedykowanej funkcji dla API Google z nowym kluczem
+            final_response = call_google_gemini_api(
+                api_key=GOOGLE_API_KEY, # Używamy klucza Google ze stałej
+                model=SYNTHESIS_MODEL_ID,
+                prompt_content=synthesis_prompt
             )
-        )
-        current_app.logger.info("Synteza zakończona.")
+            current_app.logger.info("Synteza zakończona.")
+        except Exception as e:
+            current_app.logger.error(f"Błąd podczas kroku syntezy (model: {SYNTHESIS_MODEL_ID}): {e}", exc_info=True)
+            synthesis_prompt = synthesis_prompt if synthesis_prompt else "Błąd formatowania promptu syntezy"
+            final_response = f"BŁĄD: Nie udało się przeprowadzić syntezy odpowiedzi.\nSzczegóły: {e}"
+        # --- Koniec Syntezy ---
 
-        # Zwróć wszystkie wyniki
+
+        # --- Zwrócenie Wyników ---
         return jsonify({
-            "analysis": analysis_raw,
-            "perspectives": perspectives_results[:3],
+            # Analiza
+            "analysis_raw": analysis_raw, # Surowa odpowiedź
+            "analysis_json": analysis_json, # Sparsowana odpowiedź (może być None)
+            "analysis_model": ANALYSIS_MODEL,
+            "analysis_prompt": analysis_prompt,
+            # Usunięto selected_perspective_models, bo jest stały
+
+            # Perspektywy (rzeczywiste wyniki, bez późniejszego paddingu)
+            "perspectives": perspectives_results, # Zwracamy listę (nawet jeśli 1 element)
+
+            # Weryfikacja
             "verification": verification_report,
-            "final_response": final_response
+            "verification_model": VERIFICATION_MODEL,
+            "verification_prompt": verification_prompt,
+
+            # Synteza
+            "final_response": final_response,
+            "synthesis_model": SYNTHESIS_MODEL_ID,
+            "synthesis_prompt": synthesis_prompt
         })
+        # --- Koniec Zwracania Wyników ---
 
     except (ValueError, RuntimeError) as e:
-         current_app.logger.error(f"Błąd przetwarzania zapytania (kontrolowany): {e}")
+         current_app.logger.error(f"Kontrolowany błąd przetwarzania zapytania: {e}", exc_info=True)
          return jsonify({"error": str(e)}), 400
     except Exception as e:
         current_app.logger.error(f"Nieoczekiwany błąd w /process_query: {traceback.format_exc()}")
-        return jsonify({"error": "Wystąpił nieoczekiwany błąd serwera podczas przetwarzania zapytania."}), 500
+        return jsonify({"error": "Wystąpił krytyczny, nieoczekiwany błąd serwera podczas przetwarzania zapytania."}), 500

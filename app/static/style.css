@@ -426,6 +426,132 @@ textarea {
     resize: vertical;
 }
 
+/* Style dla sekcji postępu */
+.progress-section {
+    margin-bottom: 30px;
+    padding: 15px;
+    background-color: rgba(0, 0, 0, 0.2);
+    border: 2px solid var(--pixel-yellow);
+    position: relative;
+}
+
+.progress-header {
+    margin-bottom: 10px;
+    font-size: 1.2rem;
+    text-transform: uppercase;
+}
+
+.progress-bar-container {
+    width: 100%;
+    height: 20px;
+    background-color: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--pixel-blue);
+    margin-bottom: 5px;
+    position: relative;
+}
+
+.progress-bar {
+    height: 100%;
+    background-color: var(--pixel-green);
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+.progress-percentage {
+    text-align: right;
+    font-size: 0.8rem;
+}
+
+/* Style dla kroków przetwarzania */
+.processing-step {
+    margin-bottom: 30px;
+    padding: 15px;
+    background-color: rgba(0, 0, 0, 0.2);
+    border: 2px solid var(--pixel-blue);
+    position: relative;
+}
+
+.step-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.step-title {
+    font-size: 1rem;
+}
+
+.step-status {
+    color: var(--pixel-yellow);
+    font-size: 0.9rem;
+}
+
+.step-details {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: rgba(0, 0, 0, 0.2);
+    border-left: 3px solid var(--pixel-green);
+}
+
+.model-info {
+    margin-bottom: 15px;
+    color: var(--pixel-yellow);
+}
+
+.prompt-info {
+    margin-bottom: 20px;
+}
+
+.prompt-header, .result-header {
+    margin-bottom: 10px;
+    color: var(--pixel-green);
+}
+
+.prompt-content, .json-content, .result-content {
+    background-color: var(--pixel-dark);
+    padding: 15px;
+    border: 1px solid var(--pixel-blue);
+    color: var(--pixel-gray);
+    font-family: monospace;
+    font-size: 0.85rem;
+    overflow-x: auto;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+/* Style dla perspektyw */
+.perspectives-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.perspective-item {
+    padding: 15px;
+    background-color: rgba(0, 0, 0, 0.2);
+    border-left: 3px solid var(--pixel-orange);
+}
+
+.perspective-header {
+    margin-bottom: 10px;
+    color: var(--pixel-orange);
+}
+
+.perspective-content {
+    margin-top: 10px;
+    padding: 10px;
+    background-color: rgba(0, 0, 0, 0.2);
+}
+
+.error-content {
+    color: var(--pixel-pink);
+}
+
+.verification-content, .markdown-content {
+    color: #fff;
+}
+
 /* Dodatkowe style dla response-content */
 .response-content {
     color: #fff;

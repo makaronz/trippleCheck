@@ -207,3 +207,80 @@ def call_openrouter_api(api_key, model, prompt_content, max_retries=2, retry_del
 
     # Ten kod nie powinien być osiągnięty
     raise RuntimeError(f"Nie udało się uzyskać odpowiedzi z API dla modelu {model} po wszystkich próbach. Ostatni błąd: {last_exception}")
+
+
+# --- Logika API Google Gemini ---
+
+def call_google_gemini_api(api_key, model, prompt_content, max_retries=2, retry_delay=5):
+    """Funkcja do wywoływania API Google Gemini."""
+    if not api_key:
+        raise ValueError("Klucz API Google Gemini nie został podany.")
+
+    # Endpoint API Gemini (może się różnić w zależności od modelu i regionu)
+    # Używamy v1beta dla modeli Gemini Pro
+    api_endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+
+    headers = {
+        "Content-Type": "application/json",
+    }
+    # Struktura danych dla Gemini API
+    data = {
+        "contents": [{
+            "parts": [{
+                "text": prompt_content
+            }]
+        }],
+        # Można dodać konfigurację generowania, np. temperature, maxOutputTokens
+        # "generationConfig": {
+        #     "temperature": 0.7,
+        #     "maxOutputTokens": 2048,
+        # }
+    }
+
+    last_exception = None
+    for attempt in range(max_retries + 1):
+        try:
+            response = requests.post(
+                api_endpoint,
+                headers=headers,
+                json=data,
+                timeout=180 # Zwiększony timeout
+            )
+            response.raise_for_status() # Rzuci wyjątkiem dla błędów 4xx/5xx
+
+            result = response.json()
+
+            # Sprawdzenie struktury odpowiedzi Gemini
+            if "candidates" in result and len(result["candidates"]) > 0 and \
+               "content" in result["candidates"][0] and "parts" in result["candidates"][0]["content"] and \
+               len(result["candidates"][0]["content"]["parts"]) > 0 and "text" in result["candidates"][0]["content"]["parts"][0]:
+                return result["candidates"][0]["content"]["parts"][0]["text"]
+            elif "promptFeedback" in result and "blockReason" in result["promptFeedback"]:
+                 # Obsługa zablokowania przez filtry bezpieczeństwa
+                 block_reason = result["promptFeedback"]["blockReason"]
+                 details = result["promptFeedback"].get("safetyRatings", [])
+                 raise ValueError(f"Zapytanie zablokowane przez Google Gemini z powodu: {block_reason}. Szczegóły: {details}")
+            else:
+                # Jeśli struktura jest inna lub brak tekstu
+                raise ValueError(f"Nieoczekiwana struktura odpowiedzi API Google Gemini dla modelu {model}: {result}")
+
+        except requests.exceptions.Timeout as e:
+             last_exception = e
+             print(f"Timeout API Google Gemini (próba {attempt+1}/{max_retries+1}) dla modelu {model}: {e}")
+             if attempt < max_retries:
+                 time.sleep(retry_delay * (attempt + 1))
+             else:
+                 raise RuntimeError(f"Przekroczono limit czasu połączenia z API Google Gemini dla modelu {model} po {max_retries+1} próbach.") from e
+        except requests.exceptions.RequestException as e:
+            last_exception = e
+            print(f"Błąd sieciowy API Google Gemini (próba {attempt+1}/{max_retries+1}) dla modelu {model}: {e}")
+            if attempt < max_retries:
+                time.sleep(retry_delay * (attempt + 1))
+            else:
+                raise RuntimeError(f"Nie udało się połączyć z API Google Gemini dla modelu {model} po {max_retries+1} próbach: {e}") from e
+        except Exception as e: # Inne błędy (np. ValueError)
+             last_exception = e
+             print(f"Nieoczekiwany błąd podczas wywołania API Google Gemini dla modelu {model} (próba {attempt+1}): {e}")
+             raise RuntimeError(f"Wystąpił nieoczekiwany błąd podczas komunikacji z API Google Gemini dla modelu {model}: {e}") from e
+
+    raise RuntimeError(f"Nie udało się uzyskać odpowiedzi z API Google Gemini dla modelu {model} po wszystkich próbach. Ostatni błąd: {last_exception}")
