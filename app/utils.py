@@ -153,14 +153,14 @@ def process_uploaded_file(filename, file_data_base64):
 
 # --- Logika API OpenRouter ---
 
-def call_openrouter_api(model, prompt_content, max_retries=2, retry_delay=5):
+def call_openrouter_api(api_key, model, prompt_content, max_retries=2, retry_delay=5):
     """Ulepszona funkcja API z obsługą błędów i ponowieniami."""
-    if not OPENROUTER_API_KEY:
-        raise ValueError("Klucz API OpenRouter nie został skonfigurowany.")
+    if not api_key: # Sprawdź przekazany klucz
+        raise ValueError("Klucz API OpenRouter nie został podany.")
 
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Authorization": f"Bearer {api_key}", # Użyj przekazanego klucza
         "HTTP-Referer": os.getenv("APP_URL", "http://localhost:5000"), # Użyj zmiennej środowiskowej lub domyślnej
         "X-Title": os.getenv("APP_TITLE", "MultiModuleAgentApp")      # Użyj zmiennej środowiskowej lub domyślnej
     }

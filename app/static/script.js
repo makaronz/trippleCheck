@@ -129,6 +129,8 @@ async function processSingleFile(file, index) {
 
 // --- Wysyłanie Zapytania ---
 async function sendQuery() {
+    const apiKeyInput = document.getElementById('apiKeyInput'); // Pobierz pole klucza API
+    const apiKey = apiKeyInput.value.trim(); // Pobierz wartość klucza API
     const queryInput = document.getElementById('queryInput');
     const query = queryInput.value.trim();
     const loadingIndicator = document.getElementById('loadingIndicator');
@@ -141,6 +143,12 @@ async function sendQuery() {
 
     if (!query) {
         displayError('Wprowadź zapytanie lub polecenie!');
+        return;
+    }
+    // Sprawdź, czy klucz API został wprowadzony
+    if (!apiKey) {
+        displayError('Wprowadź klucz API OpenRouter!');
+        apiKeyInput.focus(); // Ustaw fokus na polu klucza
         return;
     }
 
@@ -160,7 +168,8 @@ async function sendQuery() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 query: query,
-                documents: processedFiles // Wyślij pełne przetworzone dane na serwer
+                documents: processedFiles, // Wyślij pełne przetworzone dane na serwer
+                api_key: apiKey // Dodaj klucz API do danych wysyłanych do serwera
             })
         });
 

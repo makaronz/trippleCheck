@@ -14,15 +14,15 @@ def create_app():
     # --- Konfiguracja Aplikacji ---
     app.config.from_mapping(
         SECRET_KEY=os.getenv('SECRET_KEY', 'dev'), # Klucz sekretny dla sesji itp.
-        OPENROUTER_API_KEY=os.getenv('OPENROUTER_API_KEY'),
+        # OPENROUTER_API_KEY=os.getenv('OPENROUTER_API_KEY'), # Usunięto - klucz podawany w UI
         MAX_DOCUMENT_CHARS=4000,
         # Opcjonalnie: ścieżka do Tesseract
         TESSERACT_CMD=os.getenv('TESSERACT_CMD', None)
     )
 
-    # Sprawdzenie klucza API przy starcie
-    if not app.config['OPENROUTER_API_KEY']:
-        raise ValueError("BŁĄD KRYTYCZNY: Brak klucza OPENROUTER_API_KEY w pliku .env lub zmiennych środowiskowych!")
+    # Usunięto sprawdzanie klucza API przy starcie
+    # if not app.config['OPENROUTER_API_KEY']:
+    #     raise ValueError("BŁĄD KRYTYCZNY: Brak klucza OPENROUTER_API_KEY w pliku .env lub zmiennych środowiskowych!")
 
     # Konfiguracja Tesseracta, jeśli podano ścieżkę
     if app.config['TESSERACT_CMD']:
@@ -46,10 +46,8 @@ def create_app():
 
 
     # Rejestracja tras (blueprintów)
-    with app.app_context():
-        from . import routes
-        # Jeśli używasz blueprintów: app.register_blueprint(routes.bp)
-        # W tym przypadku, ponieważ routes.py importuje 'app', wystarczy import
+    from .routes import main_bp # Importujemy Blueprint
+    app.register_blueprint(main_bp) # Rejestrujemy Blueprint
 
     print("Aplikacja Flask utworzona i skonfigurowana.")
     return app

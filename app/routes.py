@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 import traceback
 import json
-from flask import request, render_template, jsonify, current_app
+from flask import request, render_template, jsonify, current_app, Blueprint # Dodano Blueprint
+import pytesseract # Import potrzebny do łapania wyjątku
 
-from app import create_app # Importujemy fabrykę, aby uzyskać dostęp do 'app'
+# Usunięto import create_app - nie będzie już potrzebny w tym pliku
 from .utils import process_uploaded_file, call_openrouter_api, MAX_DOCUMENT_CHARS
 from .prompts import (
     QUERY_ANALYSIS_PROMPT_V2,
@@ -12,20 +13,20 @@ from .prompts import (
     SYNTHESIS_PROMPT_V2
 )
 
-# Uzyskujemy instancję aplikacji z fabryki
-# To jest potrzebne, aby dekoratory @app.route działały poprawnie w tym pliku
-# Alternatywnie można użyć Blueprintów, co jest czystsze dla większych aplikacji
-app = create_app()
+# Tworzymy Blueprint
+main_bp = Blueprint('main', __name__, template_folder='templates', static_folder='static')
 
-@app.route('/')
+
+@main_bp.route('/') # Zmieniono dekorator na Blueprint
 def index():
     """Serwuje główną stronę aplikacji."""
     # Używamy render_template zamiast render_template_string
     return render_template('index.html')
 
-@app.route('/process_file', methods=['POST'])
+@main_bp.route('/process_file', methods=['POST']) # Zmieniono dekorator na Blueprint
 def process_file_endpoint():
     """Endpoint do przetwarzania pojedynczego pliku przesłanego z frontendu."""
+    data = None # Zdefiniuj data przed blokiem try
     try:
         data = request.json
         if not data or 'filename' not in data or 'file_data_base64' not in data:
@@ -48,20 +49,25 @@ def process_file_endpoint():
         current_app.logger.error(f"Nieoczekiwany błąd w /process_file: {traceback.format_exc()}")
         return jsonify({"error": "Wystąpił nieoczekiwany błąd serwera podczas przetwarzania pliku."}), 500
 
-@app.route('/process_query', methods=['POST'])
+@main_bp.route('/process_query', methods=['POST']) # Zmieniono dekorator na Blueprint
 def process_query_endpoint():
     """Główny endpoint przetwarzania zapytania przez pipeline AI."""
-    if not current_app.config['OPENROUTER_API_KEY']:
-        current_app.logger.error("Klucz API OpenRouter nie jest skonfigurowany na serwerze.")
-        return jsonify({"error": "Klucz API OpenRouter nie jest skonfigurowany na serwerze."}), 500
+    # Usunięto sprawdzanie klucza z konfiguracji serwera
+    # if not current_app.config['OPENROUTER_API_KEY']:
+    #     current_app.logger.error("Klucz API OpenRouter nie jest skonfigurowany na serwerze.")
+    #     return jsonify({"error": "Klucz API OpenRouter nie jest skonfigurowany na serwerze."}), 500
 
     try:
         data = request.json
-        if not data or 'query' not in data:
-             return jsonify({"error": "Brak zapytania w żądaniu."}), 400
+        if not data or 'query' not in data or 'api_key' not in data: # Sprawdź, czy klucz API jest w żądaniu
+             return jsonify({"error": "Brak zapytania lub klucza API w żądaniu."}), 400
 
         query = data['query']
+        api_key = data['api_key'] # Odczytaj klucz API z żądania
         documents = data.get('documents', []) # Oczekujemy listy {name: string, content: string}
+
+        if not api_key:
+             return jsonify({"error": "Klucz API nie może być pusty."}), 400
 
         # --- Przygotowanie danych dla modeli ---
         documents_summary = "Brak dodatkowych dokumentów."
@@ -89,6 +95,7 @@ def process_query_endpoint():
         # --- Krok 1: Analiza zapytania ---
         current_app.logger.info("Krok 1: Analiza zapytania...")
         analysis_raw = call_openrouter_api(
+            api_key=api_key, # Przekaż klucz API
             model="mistralai/mistral-7b-instruct", # Darmowy model
             prompt_content=QUERY_ANALYSIS_PROMPT_V2.format(query=query, documents_summary=documents_summary)
         )
@@ -144,6 +151,7 @@ def process_query_endpoint():
             current_app.logger.info(f"  - Generowanie przez: {model_id}")
             try:
                 response = call_openrouter_api(
+                    api_key=api_key, # Przekaż klucz API
                     model=model_id,
                     prompt_content=RESPONSE_GENERATION_PROMPT_V2.format(
                         model_name=model_id,
@@ -175,6 +183,7 @@ def process_query_endpoint():
         # --- Krok 3: Weryfikacja Odpowiedzi ---
         current_app.logger.info("Krok 3: Weryfikacja odpowiedzi...")
         verification_report = call_openrouter_api(
+            api_key=api_key, # Przekaż klucz API
             model="nousresearch/nous-hermes-2-mixtral-8x7b-dpo", # Darmowy model
             prompt_content=VERIFICATION_PROMPT_V2.format(
                 query=query,
@@ -194,6 +203,7 @@ def process_query_endpoint():
         # --- Krok 4: Synteza i Konkluzja ---
         current_app.logger.info("Krok 4: Synteza odpowiedzi końcowej...")
         final_response = call_openrouter_api(
+            api_key=api_key, # Przekaż klucz API
             model="nousresearch/nous-hermes-2-mixtral-8x7b-dpo", # Najlepszy darmowy
             prompt_content=SYNTHESIS_PROMPT_V2.format(
                 query=query,

@@ -36,7 +36,7 @@ label {
     color: #555;
 }
 
-input[type="file"], textarea {
+input[type="file"], textarea, input[type="password"] { /* Dodano input[type="password"] */
     width: calc(100% - 22px); /* Uwzględnia padding */
     padding: 10px;
     margin-bottom: 15px;
@@ -254,4 +254,26 @@ textarea {
     padding: 15px;
     border-radius: 4px;
     margin-top: 15px;
+}
+
+/* Style dla sekcji klucza API */
+.api-key-section {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
+}
+
+.api-key-section label {
+    margin-bottom: 8px;
+}
+
+/* Usunięto specyficzne stylowanie dla input[type="password"], bo jest już objęte ogólnym */
+/* .api-key-section input[type="password"] { ... } */
+
+.api-key-section small {
+    font-size: 0.85em;
+    color: #666;
+    display: block;
+    margin-top: -10px; /* Zmniejsza odstęp po inpucie */
+    margin-bottom: 10px;
 }
