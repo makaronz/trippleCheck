@@ -29,8 +29,8 @@ MAX_PERSPECTIVES = 1 # Zmieniono na 1 zgodnie z nowymi wytycznymi
 
 # Modele używane w stałych krokach - ZAKTUALIZOWANO
 ANALYSIS_MODEL = "anthropic/claude-3-haiku" # Bardziej niezawodny model do analizy JSON
-PERSPECTIVE_MODEL = "anthropic/claude-3-opus" # Model z dostępem do internetu do generowania perspektyw
-VERIFICATION_MODEL = "mistralai/mistral-7b-instruct" # Szybszy model do weryfikacji
+PERSPECTIVE_MODEL = "anthropic/claude-3-haiku" # Szybszy model z dostępem do internetu
+VERIFICATION_MODEL = "mistralai/mistral-7b-instruct" # Szybszy model do weryfikacji (obecnie pominięty)
 SYNTHESIS_MODEL = "anthropic/claude-3-haiku" # Model do syntezy (używamy OpenRouter zamiast API Google)
 
 # Klucze API - Pobierane ze zmiennych środowiskowych
@@ -195,38 +195,10 @@ def process_query_endpoint():
         # --- Koniec Generowania Perspektywy ---
 
 
-        # --- Krok 3: Weryfikacja Odpowiedzi ---
-        current_app.logger.info(f"Krok 3: Weryfikacja odpowiedzi (model: {VERIFICATION_MODEL})...")
-        verification_prompt = None # Reset
-        verification_report = f"BŁĄD: Nie udało się przeprowadzić weryfikacji." # Domyślny błąd
-
-        # Sprawdzamy, czy mamy perspektywę do weryfikacji
-        if perspectives_results:
-            perspective_to_verify = perspectives_results[0] # Bierzemy pierwszą (i jedyną) perspektywę
-            try:
-                verification_args = {
-                    'query': query,
-                    'model_name': perspective_to_verify.get('model', 'N/A'),
-                    'model_spec': perspective_to_verify.get('specialization', 'N/A'),
-                    'perspective_response': perspective_to_verify.get('response', 'Brak')
-                }
-                verification_prompt = VERIFICATION_PROMPT_V2.format(**verification_args)
-
-                # Używamy klucza OpenRouter z UI dla Deepseek Free
-                verification_report = call_openrouter_api(
-                    api_key=openrouter_api_key,
-                    model=VERIFICATION_MODEL,
-                    prompt_content=verification_prompt
-                )
-                current_app.logger.info("Weryfikacja zakończona.")
-            except Exception as e:
-                 current_app.logger.error(f"Błąd podczas kroku weryfikacji (model: {VERIFICATION_MODEL}): {e}", exc_info=True)
-                 verification_prompt = verification_prompt if verification_prompt else "Błąd formatowania promptu weryfikacji"
-                 verification_report = f"BŁĄD: Nie udało się przeprowadzić weryfikacji.\nSzczegóły: {e}"
-        else:
-            current_app.logger.warning("Krok 3: Pominięto weryfikację - brak perspektyw do weryfikacji.")
-            verification_report = "Pominięto - brak perspektywy do weryfikacji."
-            verification_prompt = "Pominięto - brak perspektywy do weryfikacji."
+        # --- Krok 3: Weryfikacja Odpowiedzi (POMINIĘTO) ---
+        current_app.logger.info("Krok 3: Weryfikacja odpowiedzi - POMINIĘTO dla zwiększenia wydajności")
+        verification_prompt = "Pominięto dla zwiększenia wydajności."
+        verification_report = "Pominięto dla zwiększenia wydajności."
         # --- Koniec Weryfikacji ---
 
 

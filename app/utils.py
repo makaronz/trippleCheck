@@ -120,7 +120,7 @@ def process_uploaded_file(filename, file_data_base64):
 
 # --- Logika API OpenRouter ---
 
-def call_openrouter_api(api_key, model, prompt_content, max_retries=5, retry_delay=2):
+def call_openrouter_api(api_key, model, prompt_content, max_retries=10, retry_delay=1):
     """Ulepszona funkcja API z obsługą błędów i ponowieniami."""
     if not api_key: # Sprawdź przekazany klucz
         raise ValueError("Klucz API OpenRouter nie został podany.")
@@ -140,7 +140,7 @@ def call_openrouter_api(api_key, model, prompt_content, max_retries=5, retry_del
                 "https://openrouter.ai/api/v1/chat/completions",
                 headers=headers,
                 json=data,
-                timeout=60  # Zmniejszony timeout do 60 sekund
+                timeout=30  # Zmniejszony timeout do 30 sekund
             )
             response.raise_for_status()
 
