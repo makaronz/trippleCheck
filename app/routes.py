@@ -28,7 +28,7 @@ DEFAULT_PERSPECTIVE_MODELS = [
 MAX_PERSPECTIVES = 1 # Zmieniono na 1 zgodnie z nowymi wytycznymi
 
 # Modele używane w stałych krokach - ZAKTUALIZOWANO
-ANALYSIS_MODEL = "anthropic/claude-3-haiku" # Szybszy model do analizy
+ANALYSIS_MODEL = "mistralai/mistral-7b-instruct" # Najszybszy model do analizy
 PERSPECTIVE_MODEL = "google/gemini-flash-1.5" # Szybszy model do generowania perspektyw
 VERIFICATION_MODEL = "mistralai/mistral-7b-instruct" # Szybszy model do weryfikacji
 SYNTHESIS_MODEL_ID = "gemini-pro" # Model do syntezy (używamy Gemini Pro 1.0 przez API Google)
