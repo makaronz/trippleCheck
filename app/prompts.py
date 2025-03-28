@@ -18,9 +18,9 @@ Format your response strictly as a JSON object with the following keys:
 "ambiguities": "...",
 "complexity": "high/medium/low",
 "suggested_models": [
-    {"model_id": "vendor/model-name-v1", "reason": "..."},
-    {"model_id": "vendor/model-name-v2", "reason": "..."},
-    {"model_id": "vendor/model-name-v3", "reason": "..."}
+    {{"model_id": "vendor/model-name-v1", "reason": "..."}},
+    {{"model_id": "vendor/model-name-v2", "reason": "..."}},
+    {{"model_id": "vendor/model-name-v3", "reason": "..."}}
 ],
 "analysis_summary": "A brief summary of the query and requirements."
 
