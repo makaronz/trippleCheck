@@ -28,8 +28,8 @@ DEFAULT_PERSPECTIVE_MODELS = [
 MAX_PERSPECTIVES = 1 # Zmieniono na 1 zgodnie z nowymi wytycznymi
 
 # Modele używane w stałych krokach - ZAKTUALIZOWANO
-ANALYSIS_MODEL = "mistralai/mistral-7b-instruct" # Najszybszy model do analizy
-PERSPECTIVE_MODEL = "google/gemini-flash-1.5" # Szybszy model do generowania perspektyw
+ANALYSIS_MODEL = "anthropic/claude-3-haiku" # Bardziej niezawodny model do analizy JSON
+PERSPECTIVE_MODEL = "anthropic/claude-3-opus" # Model z dostępem do internetu do generowania perspektyw
 VERIFICATION_MODEL = "mistralai/mistral-7b-instruct" # Szybszy model do weryfikacji
 SYNTHESIS_MODEL = "anthropic/claude-3-haiku" # Model do syntezy (używamy OpenRouter zamiast API Google)
 
@@ -123,11 +123,37 @@ def process_query_endpoint():
         # --- Parsowanie Wyników Analizy (niepotrzebne do wyboru modeli perspektyw) ---
         analysis_json = None
         try:
-            analysis_cleaned = analysis_raw.strip().removeprefix("```json").removesuffix("```").strip()
+            # Próba znalezienia JSON w odpowiedzi
+            json_start = analysis_raw.find("```json")
+            json_end = analysis_raw.rfind("```")
+            
+            if json_start != -1 and json_end != -1 and json_end > json_start:
+                # Wytnij JSON z odpowiedzi
+                analysis_cleaned = analysis_raw[json_start + 7:json_end].strip()
+            else:
+                # Jeśli nie ma znaczników, spróbuj całą odpowiedź
+                analysis_cleaned = analysis_raw.strip()
+            
+            # Próba znalezienia obiektu JSON w tekście
+            start_brace = analysis_cleaned.find('{')
+            end_brace = analysis_cleaned.rfind('}')
+            if start_brace != -1 and end_brace != -1 and end_brace > start_brace:
+                analysis_cleaned = analysis_cleaned[start_brace:end_brace+1]
+            
             if analysis_cleaned:
                 analysis_json = json.loads(analysis_cleaned)
+                current_app.logger.info(f"Pomyślnie sparsowano JSON z analizy: {analysis_json}")
+            else:
+                current_app.logger.warning("Pusta odpowiedź analizy po czyszczeniu.")
         except Exception as e:
             current_app.logger.warning(f"Nie udało się sparsować JSON z analizy: {e}. Surowa odpowiedź: '{analysis_raw[:200]}...'")
+            # Utwórz domyślny JSON w przypadku błędu
+            analysis_json = {
+                "main_topics": ["unknown"],
+                "user_intent": "unknown",
+                "complexity": "medium",
+                "analysis_summary": "Nie udało się przeprowadzić analizy."
+            }
         # --- Koniec Parsowania ---
 
 

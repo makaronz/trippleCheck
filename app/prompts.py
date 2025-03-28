@@ -1,17 +1,21 @@
 # -*- coding: utf-8 -*-
 
-# Prompt Analizy (Oczekiwany format: JSON) - UPROSZCZONY
+# Prompt Analizy (Oczekiwany format: JSON) - POPRAWIONY
 QUERY_ANALYSIS_PROMPT_V2 = """
 Analyze the user's query and document context to determine:
 1. Main topics
 2. User intent
 3. Complexity (low/medium/high)
 
-Format as JSON:
-"main_topics": ["topic1", "topic2"],
-"user_intent": "...",
-"complexity": "high/medium/low",
-"analysis_summary": "Brief summary"
+IMPORTANT: You must return a valid JSON object with the following structure:
+```json
+{
+  "main_topics": ["topic1", "topic2"],
+  "user_intent": "brief description of intent",
+  "complexity": "high/medium/low",
+  "analysis_summary": "Brief summary"
+}
+```
 
 User Query:
 {query}
@@ -20,20 +24,24 @@ Available Documents Summary:
 {documents_summary}
 """
 
-# Prompt Generowania Perspektyw (Uproszczony)
+# Prompt Generowania Perspektyw (Z dostępem do internetu)
 RESPONSE_GENERATION_PROMPT_V2 = """
 You are model: {model_name} with strength: {specialization}.
 
 Answer this query: {query}
 
+IMPORTANT: You have access to the internet. You MUST search for and include up-to-date information from the web to answer this query. Include relevant facts, data, and current information.
+
 Documents (cite if used):
 {documents_content}
 
 Instructions:
-1. Be concise but thorough
-2. Use Markdown formatting
-3. Cite documents when used
-4. Focus on the user's intent
+1. ALWAYS search the internet for current and relevant information
+2. Include specific facts, data, and information from reliable sources
+3. Cite your sources with links when possible
+4. Use Markdown formatting for clarity
+5. Be thorough and comprehensive
+6. Focus on the user's intent
 """
 
 # Prompt Weryfikacji (Uproszczony)
