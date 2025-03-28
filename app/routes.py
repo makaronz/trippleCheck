@@ -33,9 +33,9 @@ PERSPECTIVE_MODEL = "google/gemini-2.5-pro-exp-03-25:free" # Model do generowani
 VERIFICATION_MODEL = "deepseek/deepseek-chat:free" # Model do weryfikacji
 SYNTHESIS_MODEL_ID = "gemini-pro" # Model do syntezy (używamy Gemini Pro 1.0 przez API Google)
 
-# Klucze API - ZAKTUALIZOWANO
-OPENAI_API_KEY = "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"
-GOOGLE_API_KEY = "AIzaSyC1OlGKsMrFS6ZgLCVy7MFeUJIr2TX-Hj4" # Zaktualizowany klucz Google
+# Klucze API - Pobierane ze zmiennych środowiskowych
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY") # Upewnij się, że ten klucz jest w .env
 
 @main_bp.route('/')
 def index():
@@ -108,9 +108,11 @@ def process_query_endpoint():
         )
         analysis_raw = "{}" # Domyślna pusta odpowiedź
         try:
-            # Używamy klucza OpenAI przez OpenRouter
+            # Używamy klucza OpenAI (pobranego z env) przez OpenRouter
+            if not OPENAI_API_KEY:
+                 raise ValueError("Brak klucza OPENAI_API_KEY w konfiguracji środowiska.")
             analysis_raw = call_openrouter_api(
-                api_key=OPENAI_API_KEY, # Użyj stałego klucza OpenAI
+                api_key=OPENAI_API_KEY, # Użyj klucza OpenAI z env
                 model=ANALYSIS_MODEL,
                 prompt_content=analysis_prompt
             )
@@ -169,39 +171,38 @@ def process_query_endpoint():
         # --- Koniec Generowania Perspektywy ---
 
 
-        # --- Przygotowanie Danych do Kroków 3 i 4 ---
-        # Uzupełniamy listę `perspectives_results` do 3 elementów (dla spójności promptu weryfikacji)
-        padded_perspectives = perspectives_results[:]
-        while len(padded_perspectives) < 3:
-            padded_perspectives.append({"model": "N/A", "specialization": "N/A", "response": "Brak danych (nie generowano).", "prompt": "N/A"})
-        final_perspectives_for_processing = padded_perspectives[:3]
-        # --- Koniec Przygotowania Danych ---
-
-
         # --- Krok 3: Weryfikacja Odpowiedzi ---
         current_app.logger.info(f"Krok 3: Weryfikacja odpowiedzi (model: {VERIFICATION_MODEL})...")
         verification_prompt = None # Reset
         verification_report = f"BŁĄD: Nie udało się przeprowadzić weryfikacji." # Domyślny błąd
-        try:
-            verification_args = {'query': query}
-            for i, p in enumerate(final_perspectives_for_processing):
-                idx = i + 1
-                verification_args[f'model_{idx}_name'] = p.get('model', 'N/A')
-                verification_args[f'model_{idx}_spec'] = p.get('specialization', 'N/A')
-                verification_args[f'perspective_{idx}_response'] = p.get('response', 'Brak')
 
-            verification_prompt = VERIFICATION_PROMPT_V2.format(**verification_args)
-            # Używamy klucza OpenRouter z UI dla Deepseek Free
-            verification_report = call_openrouter_api(
-                api_key=openrouter_api_key,
-                model=VERIFICATION_MODEL,
-                prompt_content=verification_prompt
-            )
-            current_app.logger.info("Weryfikacja zakończona.")
-        except Exception as e:
-             current_app.logger.error(f"Błąd podczas kroku weryfikacji (model: {VERIFICATION_MODEL}): {e}", exc_info=True)
-             verification_prompt = verification_prompt if verification_prompt else "Błąd formatowania promptu weryfikacji"
-             verification_report = f"BŁĄD: Nie udało się przeprowadzić weryfikacji.\nSzczegóły: {e}"
+        # Sprawdzamy, czy mamy perspektywę do weryfikacji
+        if perspectives_results:
+            perspective_to_verify = perspectives_results[0] # Bierzemy pierwszą (i jedyną) perspektywę
+            try:
+                verification_args = {
+                    'query': query,
+                    'model_name': perspective_to_verify.get('model', 'N/A'),
+                    'model_spec': perspective_to_verify.get('specialization', 'N/A'),
+                    'perspective_response': perspective_to_verify.get('response', 'Brak')
+                }
+                verification_prompt = VERIFICATION_PROMPT_V2.format(**verification_args)
+
+                # Używamy klucza OpenRouter z UI dla Deepseek Free
+                verification_report = call_openrouter_api(
+                    api_key=openrouter_api_key,
+                    model=VERIFICATION_MODEL,
+                    prompt_content=verification_prompt
+                )
+                current_app.logger.info("Weryfikacja zakończona.")
+            except Exception as e:
+                 current_app.logger.error(f"Błąd podczas kroku weryfikacji (model: {VERIFICATION_MODEL}): {e}", exc_info=True)
+                 verification_prompt = verification_prompt if verification_prompt else "Błąd formatowania promptu weryfikacji"
+                 verification_report = f"BŁĄD: Nie udało się przeprowadzić weryfikacji.\nSzczegóły: {e}"
+        else:
+            current_app.logger.warning("Krok 3: Pominięto weryfikację - brak perspektyw do weryfikacji.")
+            verification_report = "Pominięto - brak perspektywy do weryfikacji."
+            verification_prompt = "Pominięto - brak perspektywy do weryfikacji."
         # --- Koniec Weryfikacji ---
 
 
@@ -210,19 +211,22 @@ def process_query_endpoint():
         synthesis_prompt = None # Reset
         final_response = f"BŁĄD: Nie udało się przeprowadzić syntezy odpowiedzi." # Domyślny błąd
         try:
-            # Przygotuj podsumowanie perspektyw (teraz tylko jednej, ale prompt oczekuje struktury)
-            perspectives_summary_for_prompt = "\n\n".join([
-                 f"--- START PERSPECTIVE {i+1} ({p.get('model', 'N/A')} - {p.get('specialization', 'N/A')}) ---\n{p.get('response', 'Brak')}\n--- END PERSPECTIVE {i+1} ---"
-                 for i, p in enumerate(final_perspectives_for_processing) # Używamy uzupełnionej listy
-            ])
+            # Przygotuj podsumowanie perspektyw (teraz tylko jednej)
+            perspectives_summary_for_prompt = "Brak perspektyw do podsumowania."
+            if perspectives_results:
+                 p = perspectives_results[0]
+                 perspectives_summary_for_prompt = f"--- START PERSPECTIVE ({p.get('model', 'N/A')} - {p.get('specialization', 'N/A')}) ---\n{p.get('response', 'Brak')}\n--- END PERSPECTIVE ---"
+
             synthesis_prompt = SYNTHESIS_PROMPT_V2.format(
                     query=query,
                     perspectives_summary=perspectives_summary_for_prompt,
                     verification_report=verification_report
                 )
-            # Używamy dedykowanej funkcji dla API Google z nowym kluczem
+            # Używamy dedykowanej funkcji dla API Google z kluczem z env
+            if not GOOGLE_API_KEY:
+                 raise ValueError("Brak klucza GOOGLE_API_KEY w konfiguracji środowiska.")
             final_response = call_google_gemini_api(
-                api_key=GOOGLE_API_KEY, # Używamy klucza Google ze stałej
+                api_key=GOOGLE_API_KEY, # Używamy klucza Google z env
                 model=SYNTHESIS_MODEL_ID,
                 prompt_content=synthesis_prompt
             )

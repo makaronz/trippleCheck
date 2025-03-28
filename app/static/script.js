@@ -28,9 +28,17 @@ async function handleFileUpload() {
         const fileEntry = document.createElement('div');
         fileEntry.id = `file-entry-${i}`;
         fileEntry.className = 'file-entry';
-        fileEntry.innerHTML = `<span>${i + 1}. ${file.name} (${formatFileSize(file.size)})</span> <span class="status">⏳ Przetwarzanie...</span>`;
-        filesListDiv.appendChild(fileEntry);
-        processingPromises.push(processSingleFile(file, i));
+        // Sprawdź rozszerzenie pliku PRZED dodaniem do przetwarzania
+        if (file.name.toLowerCase().endsWith('.pdf')) {
+            fileEntry.innerHTML = `<span>${i + 1}. ${file.name} (${formatFileSize(file.size)})</span> <span class="status" style="color: orange;">⚠ PDF nieobsługiwany</span>`;
+            filesListDiv.appendChild(fileEntry);
+            // Nie dodawaj do processingPromises, ale dodaj null, aby zachować indeksowanie
+            processingPromises.push(Promise.resolve(null));
+        } else {
+            fileEntry.innerHTML = `<span>${i + 1}. ${file.name} (${formatFileSize(file.size)})</span> <span class="status">⏳ Przetwarzanie...</span>`;
+            filesListDiv.appendChild(fileEntry);
+            processingPromises.push(processSingleFile(file, i));
+        }
     }
 
     try {

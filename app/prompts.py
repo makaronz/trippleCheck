@@ -54,43 +54,32 @@ Instructions:
 6. Focus on fulfilling the user's intent as identified in the query analysis.
 """
 
-# Prompt Weryfikacji (Ulepszony, format Markdown)
+# Prompt Weryfikacji (Dostosowany do pojedynczej perspektywy, format Markdown)
 VERIFICATION_PROMPT_V2 = """
-Act as a critical AI fact-checker and content evaluator. Your task is to rigorously assess the multiple AI-generated perspectives provided below in response to the user's query.
+Act as a critical AI fact-checker and content evaluator. Your task is to rigorously assess the single AI-generated perspective provided below in response to the user's query.
 
 User Query: {query}
 
-Perspectives for Verification:
---- START PERSPECTIVE 1 ({model_1_name} - {model_1_spec}) ---
-{perspective_1_response}
---- END PERSPECTIVE 1 ---
+Perspective for Verification:
+--- START PERSPECTIVE ({model_name} - {model_spec}) ---
+{perspective_response}
+--- END PERSPECTIVE ---
 
---- START PERSPECTIVE 2 ({model_2_name} - {model_2_spec}) ---
-{perspective_2_response}
---- END PERSPECTIVE 2 ---
-
---- START PERSPECTIVE 3 ({model_3_name} - {model_3_spec}) ---
-{perspective_3_response}
---- END PERSPECTIVE 3 ---
-
-Evaluate each perspective based on the following criteria. Be specific, provide justifications, and cite examples from the responses:
-1. Factual Accuracy: Verify claims against known facts or indicate if unverifiable. Note any potential inaccuracies or hallucinations.
-2. Logical Consistency: Check for internal contradictions and soundness of reasoning.
-3. Completeness: Assess if the response fully addresses the user's query and covers key aspects.
-4. Relevance: Ensure the response is on-topic and aligned with the user's intent and the model's stated specialization.
-5. Document Usage: Check if documents were used appropriately and cited correctly (if applicable).
-6. Bias and Objectivity: Identify any potential bias or non-neutral language.
-7. Clarity and Structure: Evaluate the readability and organization of the response.
-
-Additionally:
-8. Identify Contradictions: Explicitly point out any significant contradictions or disagreements between the different perspectives.
-9. Highlight Strengths: Briefly mention the strongest points or unique contributions of each perspective.
+Evaluate the perspective based on the following criteria. Be specific, provide justifications, and cite examples from the response:
+1.  **Factual Accuracy:** Verify claims against known facts or indicate if unverifiable. Note any potential inaccuracies or hallucinations.
+2.  **Logical Consistency:** Check for internal contradictions and soundness of reasoning.
+3.  **Completeness:** Assess if the response fully addresses the user's query and covers key aspects.
+4.  **Relevance:** Ensure the response is on-topic and aligned with the user's intent and the model's stated specialization.
+5.  **Document Usage:** Check if documents were used appropriately and cited correctly (if applicable).
+6.  **Bias and Objectivity:** Identify any potential bias or non-neutral language.
+7.  **Clarity and Structure:** Evaluate the readability and organization of the response.
+8.  **Strengths:** Briefly mention the strongest points or unique contributions of the perspective.
+9.  **Weaknesses/Areas for Improvement:** Identify any significant weaknesses, omissions, or areas where the response could be improved.
 
 Format your output using Markdown:
 
-## Verification Report
+## Verification Report for Perspective ({model_name})
 
-### Perspective 1 ({model_1_name})
 *   **Factual Accuracy:** [Evaluation + Justification + Examples]
 *   **Logical Consistency:** [Evaluation + Justification]
 *   **Completeness:** [Evaluation + Justification]
@@ -99,45 +88,33 @@ Format your output using Markdown:
 *   **Bias/Objectivity:** [Evaluation + Justification]
 *   **Clarity/Structure:** [Evaluation + Justification]
 *   **Strengths:** [List]
-
-### Perspective 2 ({model_2_name})
-*   **Factual Accuracy:** [...]
-*   ... (repeat all criteria) ...
-*   **Strengths:** [List]
-
-### Perspective 3 ({model_3_name})
-*   **Factual Accuracy:** [...]
-*   ... (repeat all criteria) ...
-*   **Strengths:** [List]
-
-### Cross-Perspective Analysis
-*   **Contradictions Identified:** [Describe specific contradictions between perspectives and their potential sources]
-*   **Overall Assessment:** [Brief summary of collective quality and reliability]
+*   **Weaknesses/Areas for Improvement:** [List]
+*   **Overall Assessment:** [Brief summary of the perspective's quality and reliability]
 """
 
-# Prompt Syntezy (Ulepszony)
+# Prompt Syntezy (Ulepszony - dostosowany do pojedynczej perspektywy i zmienionego raportu weryfikacji)
 SYNTHESIS_PROMPT_V2 = """
-Act as an AI Knowledge Synthesizer and Editor. Your goal is to create a single, comprehensive, accurate, and coherent final response to the user's query, integrating insights from multiple AI perspectives and their verification report.
+Act as an AI Knowledge Synthesizer and Editor. Your goal is to create a single, comprehensive, accurate, and coherent final response to the user's query, based on the provided AI perspective and its verification report.
 
 User Query: {query}
 
-Generated Perspectives (for context):
-{perspectives_summary}
+Generated Perspective (for context):
+{perspectives_summary} # Note: This will contain only one perspective now
 
 Verification Report (Crucial Guidance):
 {verification_report}
 
 Instructions:
-1. Carefully review the Verification Report to understand the strengths, weaknesses, and contradictions of each perspective.
-2. Construct a final response that integrates the most accurate, relevant, and well-supported information from the individual perspectives.
-3. Resolve conflicts identified in the verification report. If perspectives differ, prioritize information deemed more reliable by the verifier. If reliable information conflicts, present the differing viewpoints transparently or synthesize them if possible, clearly explaining the discrepancy and your reasoning.
-4. Discard or correct information identified as inaccurate, biased, or poorly reasoned in the verification report.
+1. Carefully review the Verification Report to understand the strengths and weaknesses of the provided perspective.
+2. Construct a final response based primarily on the generated perspective, but refine it based on the verification report.
+3. Correct any information identified as inaccurate, biased, or poorly reasoned in the verification report.
+4. Address any points raised in the "Weaknesses/Areas for Improvement" section of the report, if possible, by augmenting or clarifying the original perspective's content.
 5. Ensure the final response directly and fully addresses the user's original query and intent.
 6. Maintain a neutral, objective, and informative tone.
 7. Structure the response logically using Markdown for clarity (headings, lists, bolding, etc.).
 8. Attribute information to specific documents if appropriate (based on generation/verification steps).
-9. Clearly state any remaining uncertainties or areas where consensus could not be reached, referencing the verification report if necessary.
-10. Do not simply concatenate the inputs; perform a genuine synthesis and refinement. The final output should be a polished, standalone response.
+9. Clearly state any remaining uncertainties highlighted in the verification report.
+10. Do not simply copy the original perspective; perform a genuine synthesis and refinement based on the verification. The final output should be a polished, standalone response.
 
 Generate the final synthesized response below:
 """

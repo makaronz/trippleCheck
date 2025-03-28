@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+p# -*- coding: utf-8 -*-
 import os
 import base64
 import tempfile
@@ -9,7 +9,7 @@ import markdown
 import requests
 import json
 
-import PyPDF2
+# Usunięto import PyPDF2
 from PIL import Image
 import pytesseract
 import markdownify
@@ -22,41 +22,7 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY") # Wczytane w __init__.py
 
 # --- Przetwarzanie Plików ---
 
-def safe_extract_text_from_pdf(pdf_data):
-    """Bezpieczna ekstrakcja tekstu z PDF. Rzuca wyjątek w razie błędu."""
-    text = ""
-    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as temp_file:
-        temp_file.write(pdf_data)
-        temp_path = temp_file.name
-    try:
-        with open(temp_path, 'rb') as f:
-            reader = PyPDF2.PdfReader(f)
-            # Sprawdzenie czy plik jest zaszyfrowany
-            if reader.is_encrypted:
-                 try:
-                     # Próba odszyfrowania pustym hasłem (częsty przypadek)
-                     reader.decrypt('')
-                 except Exception as decrypt_error:
-                      raise ValueError(f"Plik PDF jest zaszyfrowany i nie można go odszyfrować: {decrypt_error}") from decrypt_error
-
-            for page in reader.pages:
-                try:
-                    page_text = page.extract_text()
-                    if page_text:
-                        text += page_text + "\n"
-                except Exception as page_error:
-                    print(f"Ostrzeżenie: Błąd podczas ekstrakcji tekstu ze strony PDF: {page_error}")
-                    continue # Przejdź do następnej strony
-    except PyPDF2.errors.PdfReadError as pdf_error:
-         raise ValueError(f"Błąd odczytu pliku PDF (może być uszkodzony): {pdf_error}") from pdf_error
-    except Exception as e:
-        raise ValueError(f"Nieoczekiwany błąd podczas przetwarzania PDF: {e}") from e
-    finally:
-        try:
-            os.unlink(temp_path)
-        except OSError:
-             print(f"Ostrzeżenie: Nie udało się usunąć pliku tymczasowego: {temp_path}")
-    return text
+# Usunięto funkcję safe_extract_text_from_pdf
 
 def safe_extract_text_from_image(image_data):
     """Bezpieczna ekstrakcja tekstu z obrazu (OCR). Rzuca wyjątek."""
@@ -129,7 +95,8 @@ def process_uploaded_file(filename, file_data_base64):
         filename_lower = filename.lower()
 
         if filename_lower.endswith('.pdf'):
-            content = safe_extract_text_from_pdf(file_data)
+            # Zgłoś błąd zamiast przetwarzać PDF
+            raise ValueError("Przesyłanie plików PDF nie jest obsługiwane.")
         elif filename_lower.endswith(('.jpg', '.jpeg', '.png')):
             content = safe_extract_text_from_image(file_data)
         elif filename_lower.endswith('.md'):
