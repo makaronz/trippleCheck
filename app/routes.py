@@ -29,9 +29,11 @@ MAX_PERSPECTIVES = 1 # Zmieniono na 1 zgodnie z nowymi wytycznymi
 
 # Modele używane w stałych krokach - ZAKTUALIZOWANO
 ANALYSIS_MODEL = "anthropic/claude-3-haiku" # Bardziej niezawodny model do analizy JSON
-PERSPECTIVE_MODEL = "anthropic/claude-3-haiku" # Szybszy model z dostępem do internetu
-VERIFICATION_MODEL = "mistralai/mistral-7b-instruct" # Szybszy model do weryfikacji (obecnie pominięty)
+PERSPECTIVE_MODEL_1 = "google/gemini-1.5-pro" # Model 1 z dostępem do internetu (Gemini 2)
+PERSPECTIVE_MODEL_2 = "anthropic/claude-3-sonnet" # Model 2 z dostępem do internetu (inny model)
+VERIFICATION_MODEL = "openai/gpt-4o-mini" # Model do weryfikacji z dostępem do internetu
 SYNTHESIS_MODEL = "anthropic/claude-3-haiku" # Model do syntezy (używamy OpenRouter zamiast API Google)
+MAX_PERSPECTIVES = 2 # Przywrócono 2 perspektywy
 
 # Klucze API - Pobierane ze zmiennych środowiskowych
 # OPENAI_API_KEY = os.getenv("OPENAI_API_KEY") # Usunięto - niepotrzebne przy użyciu OpenRouter
@@ -101,7 +103,7 @@ def process_query_endpoint():
 
 
         # --- Krok 1: Analiza Zapytania ---
-        current_app.logger.info(f"Krok 1: Analiza zapytania (model: {ANALYSIS_MODEL})...")
+        current_app.logger.info(f"Krok 1/4: Analiza zapytania (model: {ANALYSIS_MODEL})...")
         analysis_prompt = QUERY_ANALYSIS_PROMPT_V2.format(
             query=query,
             documents_summary=documents_summary
@@ -157,61 +159,130 @@ def process_query_endpoint():
         # --- Koniec Parsowania ---
 
 
-        # --- Krok 2: Generowanie Perspektywy ---
-        current_app.logger.info(f"Krok 2: Generowanie perspektywy (model: {PERSPECTIVE_MODEL})...")
+        # --- Krok 2: Generowanie Perspektyw ---
+        current_app.logger.info(f"Krok 2/4: Generowanie perspektyw (modele: {PERSPECTIVE_MODEL_1}, {PERSPECTIVE_MODEL_2})...")
         perspectives_results = []
-        specialization = "Zaawansowane rozumowanie i generowanie" # Można dostosować
-        perspective_prompt = None # Reset
+        
+        # Generowanie pierwszej perspektywy
+        current_app.logger.info(f"  - Generowanie perspektywy 1 (model: {PERSPECTIVE_MODEL_1})...")
+        specialization_1 = "Zaawansowane rozumowanie i wyszukiwanie informacji" # Dostosowano
+        perspective_prompt_1 = None # Reset
         try:
-            perspective_prompt = RESPONSE_GENERATION_PROMPT_V2.format(
-                model_name=PERSPECTIVE_MODEL,
-                specialization=specialization,
+            perspective_prompt_1 = RESPONSE_GENERATION_PROMPT_V2.format(
+                model_name=PERSPECTIVE_MODEL_1,
+                specialization=specialization_1,
                 query=query,
                 analysis=analysis_raw, # Przekaż surową analizę
                 documents_content=documents_content
             )
-            # Używamy klucza OpenRouter z UI dla Gemini Free
-            response = call_openrouter_api(
+            # Używamy klucza OpenRouter z UI
+            response_1 = call_openrouter_api(
                 api_key=openrouter_api_key,
-                model=PERSPECTIVE_MODEL,
-                prompt_content=perspective_prompt
+                model=PERSPECTIVE_MODEL_1,
+                prompt_content=perspective_prompt_1
             )
             perspectives_results.append({
-                "model": PERSPECTIVE_MODEL,
-                "specialization": specialization,
-                "response": response,
-                "prompt": perspective_prompt
+                "model": PERSPECTIVE_MODEL_1,
+                "specialization": specialization_1,
+                "response": response_1,
+                "prompt": perspective_prompt_1
             })
-            current_app.logger.info(f"  - Generowanie perspektywy (model: {PERSPECTIVE_MODEL}) zakończone.")
+            current_app.logger.info(f"  - Generowanie perspektywy 1 (model: {PERSPECTIVE_MODEL_1}) zakończone.")
         except Exception as e:
-             current_app.logger.error(f"  - Błąd generowania przez {PERSPECTIVE_MODEL}: {e}", exc_info=True)
+             current_app.logger.error(f"  - Błąd generowania przez {PERSPECTIVE_MODEL_1}: {e}", exc_info=True)
              perspectives_results.append({
-                "model": PERSPECTIVE_MODEL,
-                "specialization": specialization,
-                "response": f"BŁĄD: Nie udało się wygenerować odpowiedzi przez model {PERSPECTIVE_MODEL}.\nSzczegóły: {e}",
-                "prompt": perspective_prompt if perspective_prompt else "Błąd przed formatowaniem promptu"
+                "model": PERSPECTIVE_MODEL_1,
+                "specialization": specialization_1,
+                "response": f"BŁĄD: Nie udało się wygenerować odpowiedzi przez model {PERSPECTIVE_MODEL_1}.\nSzczegóły: {e}",
+                "prompt": perspective_prompt_1 if perspective_prompt_1 else "Błąd przed formatowaniem promptu"
              })
-        current_app.logger.info("Generowanie perspektywy zakończone.")
-        # --- Koniec Generowania Perspektywy ---
+        
+        # Generowanie drugiej perspektywy
+        current_app.logger.info(f"  - Generowanie perspektywy 2 (model: {PERSPECTIVE_MODEL_2})...")
+        specialization_2 = "Dogłębna analiza i krytyczne myślenie" # Dostosowano
+        perspective_prompt_2 = None # Reset
+        try:
+            perspective_prompt_2 = RESPONSE_GENERATION_PROMPT_V2.format(
+                model_name=PERSPECTIVE_MODEL_2,
+                specialization=specialization_2,
+                query=query,
+                analysis=analysis_raw, # Przekaż surową analizę
+                documents_content=documents_content
+            )
+            # Używamy klucza OpenRouter z UI
+            response_2 = call_openrouter_api(
+                api_key=openrouter_api_key,
+                model=PERSPECTIVE_MODEL_2,
+                prompt_content=perspective_prompt_2
+            )
+            perspectives_results.append({
+                "model": PERSPECTIVE_MODEL_2,
+                "specialization": specialization_2,
+                "response": response_2,
+                "prompt": perspective_prompt_2
+            })
+            current_app.logger.info(f"  - Generowanie perspektywy 2 (model: {PERSPECTIVE_MODEL_2}) zakończone.")
+        except Exception as e:
+             current_app.logger.error(f"  - Błąd generowania przez {PERSPECTIVE_MODEL_2}: {e}", exc_info=True)
+             perspectives_results.append({
+                "model": PERSPECTIVE_MODEL_2,
+                "specialization": specialization_2,
+                "response": f"BŁĄD: Nie udało się wygenerować odpowiedzi przez model {PERSPECTIVE_MODEL_2}.\nSzczegóły: {e}",
+                "prompt": perspective_prompt_2 if perspective_prompt_2 else "Błąd przed formatowaniem promptu"
+             })
+        
+        current_app.logger.info(f"Generowanie perspektyw zakończone. Uzyskano {len(perspectives_results)} perspektyw.")
+        # --- Koniec Generowania Perspektyw ---
 
 
-        # --- Krok 3: Weryfikacja Odpowiedzi (POMINIĘTO) ---
-        current_app.logger.info("Krok 3: Weryfikacja odpowiedzi - POMINIĘTO dla zwiększenia wydajności")
-        verification_prompt = "Pominięto dla zwiększenia wydajności."
-        verification_report = "Pominięto dla zwiększenia wydajności."
+        # --- Krok 3: Weryfikacja Odpowiedzi ---
+        current_app.logger.info(f"Krok 3/4: Weryfikacja odpowiedzi (model: {VERIFICATION_MODEL})...")
+        verification_prompt = None # Reset
+        verification_report = f"BŁĄD: Nie udało się przeprowadzić weryfikacji." # Domyślny błąd
+
+        # Sprawdzamy, czy mamy perspektywy do weryfikacji
+        if len(perspectives_results) > 0:
+            # Weryfikujemy pierwszą perspektywę (najważniejszą)
+            perspective_to_verify = perspectives_results[0]
+            try:
+                verification_args = {
+                    'query': query,
+                    'model_name': perspective_to_verify.get('model', 'N/A'),
+                    'model_spec': perspective_to_verify.get('specialization', 'N/A'),
+                    'perspective_response': perspective_to_verify.get('response', 'Brak')
+                }
+                verification_prompt = VERIFICATION_PROMPT_V2.format(**verification_args)
+
+                # Używamy klucza OpenRouter z UI
+                verification_report = call_openrouter_api(
+                    api_key=openrouter_api_key,
+                    model=VERIFICATION_MODEL,
+                    prompt_content=verification_prompt
+                )
+                current_app.logger.info("Weryfikacja zakończona.")
+            except Exception as e:
+                 current_app.logger.error(f"Błąd podczas kroku weryfikacji (model: {VERIFICATION_MODEL}): {e}", exc_info=True)
+                 verification_prompt = verification_prompt if verification_prompt else "Błąd formatowania promptu weryfikacji"
+                 verification_report = f"BŁĄD: Nie udało się przeprowadzić weryfikacji.\nSzczegóły: {e}"
+        else:
+            current_app.logger.warning("Krok 3: Pominięto weryfikację - brak perspektyw do weryfikacji.")
+            verification_report = "Pominięto - brak perspektyw do weryfikacji."
+            verification_prompt = "Pominięto - brak perspektyw do weryfikacji."
         # --- Koniec Weryfikacji ---
 
 
         # --- Krok 4: Synteza i Konkluzja ---
-        current_app.logger.info(f"Krok 4: Synteza odpowiedzi końcowej (model: {SYNTHESIS_MODEL})...")
+        current_app.logger.info(f"Krok 4/4: Synteza odpowiedzi końcowej (model: {SYNTHESIS_MODEL})...")
         synthesis_prompt = None # Reset
         final_response = f"BŁĄD: Nie udało się przeprowadzić syntezy odpowiedzi." # Domyślny błąd
         try:
-            # Przygotuj podsumowanie perspektyw (teraz tylko jednej)
+            # Przygotuj podsumowanie wszystkich perspektyw
             perspectives_summary_for_prompt = "Brak perspektyw do podsumowania."
             if perspectives_results:
-                 p = perspectives_results[0]
-                 perspectives_summary_for_prompt = f"--- START PERSPECTIVE ({p.get('model', 'N/A')} - {p.get('specialization', 'N/A')}) ---\n{p.get('response', 'Brak')}\n--- END PERSPECTIVE ---"
+                perspectives_texts = []
+                for i, p in enumerate(perspectives_results):
+                    perspectives_texts.append(f"--- START PERSPECTIVE {i+1} ({p.get('model', 'N/A')} - {p.get('specialization', 'N/A')}) ---\n{p.get('response', 'Brak')}\n--- END PERSPECTIVE {i+1} ---")
+                perspectives_summary_for_prompt = "\n\n".join(perspectives_texts)
 
             synthesis_prompt = SYNTHESIS_PROMPT_V2.format(
                     query=query,
