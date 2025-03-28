@@ -9,12 +9,12 @@ Analyze the user's query and document context to determine:
 
 IMPORTANT: You must return a valid JSON object with the following structure:
 ```json
-{
+{{
   "main_topics": ["topic1", "topic2"],
   "user_intent": "brief description of intent",
   "complexity": "high/medium/low",
   "analysis_summary": "Brief summary"
-}
+}}
 ```
 
 User Query:
