@@ -34,7 +34,7 @@ VERIFICATION_MODEL = "deepseek/deepseek-chat:free" # Model do weryfikacji
 SYNTHESIS_MODEL_ID = "gemini-pro" # Model do syntezy (używamy Gemini Pro 1.0 przez API Google)
 
 # Klucze API - Pobierane ze zmiennych środowiskowych
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+# OPENAI_API_KEY = os.getenv("OPENAI_API_KEY") # Usunięto - niepotrzebne przy użyciu OpenRouter
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY") # Upewnij się, że ten klucz jest w .env
 
 @main_bp.route('/')
@@ -108,11 +108,9 @@ def process_query_endpoint():
         )
         analysis_raw = "{}" # Domyślna pusta odpowiedź
         try:
-            # Używamy klucza OpenAI (pobranego z env) przez OpenRouter
-            if not OPENAI_API_KEY:
-                 raise ValueError("Brak klucza OPENAI_API_KEY w konfiguracji środowiska.")
+            # Używamy klucza OpenRouter podanego przez użytkownika w UI
             analysis_raw = call_openrouter_api(
-                api_key=OPENAI_API_KEY, # Użyj klucza OpenAI z env
+                api_key=openrouter_api_key, # Poprawiono: Użyj klucza OpenRouter z UI
                 model=ANALYSIS_MODEL,
                 prompt_content=analysis_prompt
             )
