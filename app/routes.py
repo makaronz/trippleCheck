@@ -29,9 +29,9 @@ MAX_PERSPECTIVES = 1 # Zmieniono na 1 zgodnie z nowymi wytycznymi
 
 # Modele używane w stałych krokach - ZAKTUALIZOWANO
 ANALYSIS_MODEL = "anthropic/claude-3-haiku" # Bardziej niezawodny model do analizy JSON
-PERSPECTIVE_MODEL_1 = "google/gemini-1.5-pro" # Model 1 z dostępem do internetu (Gemini 2)
+PERSPECTIVE_MODEL_1 = "google/gemini-2.0-flash-001" # Model 1 z dostępem do internetu (Gemini 2)
 PERSPECTIVE_MODEL_2 = "anthropic/claude-3-sonnet" # Model 2 z dostępem do internetu (inny model)
-VERIFICATION_MODEL = "openai/gpt-4o-mini" # Model do weryfikacji z dostępem do internetu
+VERIFICATION_MODEL = "openai/gpt-4o" # Model do weryfikacji z dostępem do internetu
 SYNTHESIS_MODEL = "anthropic/claude-3-haiku" # Model do syntezy (używamy OpenRouter zamiast API Google)
 MAX_PERSPECTIVES = 2 # Przywrócono 2 perspektywy
 
