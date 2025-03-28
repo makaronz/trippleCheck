@@ -120,7 +120,7 @@ def process_uploaded_file(filename, file_data_base64):
 
 # --- Logika API OpenRouter ---
 
-def call_openrouter_api(api_key, model, prompt_content, max_retries=2, retry_delay=5):
+def call_openrouter_api(api_key, model, prompt_content, max_retries=3, retry_delay=3):
     """Ulepszona funkcja API z obsługą błędów i ponowieniami."""
     if not api_key: # Sprawdź przekazany klucz
         raise ValueError("Klucz API OpenRouter nie został podany.")
@@ -140,7 +140,7 @@ def call_openrouter_api(api_key, model, prompt_content, max_retries=2, retry_del
                 "https://openrouter.ai/api/v1/chat/completions",
                 headers=headers,
                 json=data,
-                timeout=180
+                timeout=90  # Zmniejszony timeout do 90 sekund
             )
             response.raise_for_status()
 
@@ -211,7 +211,7 @@ def call_google_gemini_api(api_key, model, prompt_content, max_retries=2, retry_
                 api_endpoint,
                 headers=headers,
                 json=data,
-                timeout=180 # Zwiększony timeout
+                timeout=90 # Zmniejszony timeout do 90 sekund
             )
             response.raise_for_status() # Rzuci wyjątkiem dla błędów 4xx/5xx
 
