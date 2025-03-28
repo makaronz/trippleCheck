@@ -31,7 +31,7 @@ MAX_PERSPECTIVES = 1 # Zmieniono na 1 zgodnie z nowymi wytycznymi
 ANALYSIS_MODEL = "mistralai/mistral-7b-instruct" # Najszybszy model do analizy
 PERSPECTIVE_MODEL = "google/gemini-flash-1.5" # Szybszy model do generowania perspektyw
 VERIFICATION_MODEL = "mistralai/mistral-7b-instruct" # Szybszy model do weryfikacji
-SYNTHESIS_MODEL_ID = "gemini-pro" # Model do syntezy (używamy Gemini Pro 1.0 przez API Google)
+SYNTHESIS_MODEL = "anthropic/claude-3-haiku" # Model do syntezy (używamy OpenRouter zamiast API Google)
 
 # Klucze API - Pobierane ze zmiennych środowiskowych
 # OPENAI_API_KEY = os.getenv("OPENAI_API_KEY") # Usunięto - niepotrzebne przy użyciu OpenRouter
@@ -205,7 +205,7 @@ def process_query_endpoint():
 
 
         # --- Krok 4: Synteza i Konkluzja ---
-        current_app.logger.info(f"Krok 4: Synteza odpowiedzi końcowej (model: {SYNTHESIS_MODEL_ID})...")
+        current_app.logger.info(f"Krok 4: Synteza odpowiedzi końcowej (model: {SYNTHESIS_MODEL})...")
         synthesis_prompt = None # Reset
         final_response = f"BŁĄD: Nie udało się przeprowadzić syntezy odpowiedzi." # Domyślny błąd
         try:
@@ -220,17 +220,15 @@ def process_query_endpoint():
                     perspectives_summary=perspectives_summary_for_prompt,
                     verification_report=verification_report
                 )
-            # Używamy dedykowanej funkcji dla API Google z kluczem z env
-            if not GOOGLE_API_KEY:
-                 raise ValueError("Brak klucza GOOGLE_API_KEY w konfiguracji środowiska.")
-            final_response = call_google_gemini_api(
-                api_key=GOOGLE_API_KEY, # Używamy klucza Google z env
-                model=SYNTHESIS_MODEL_ID,
+            # Używamy OpenRouter zamiast API Google
+            final_response = call_openrouter_api(
+                api_key=openrouter_api_key, # Używamy klucza OpenRouter z UI
+                model=SYNTHESIS_MODEL,
                 prompt_content=synthesis_prompt
             )
             current_app.logger.info("Synteza zakończona.")
         except Exception as e:
-            current_app.logger.error(f"Błąd podczas kroku syntezy (model: {SYNTHESIS_MODEL_ID}): {e}", exc_info=True)
+            current_app.logger.error(f"Błąd podczas kroku syntezy (model: {SYNTHESIS_MODEL}): {e}", exc_info=True)
             synthesis_prompt = synthesis_prompt if synthesis_prompt else "Błąd formatowania promptu syntezy"
             final_response = f"BŁĄD: Nie udało się przeprowadzić syntezy odpowiedzi.\nSzczegóły: {e}"
         # --- Koniec Syntezy ---
@@ -255,7 +253,7 @@ def process_query_endpoint():
 
             # Synteza
             "final_response": final_response,
-            "synthesis_model": SYNTHESIS_MODEL_ID,
+            "synthesis_model": SYNTHESIS_MODEL,
             "synthesis_prompt": synthesis_prompt
         })
         # --- Koniec Zwracania Wyników ---
