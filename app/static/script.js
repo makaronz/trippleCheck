@@ -30,10 +30,17 @@ async function handleFileUpload() {
         fileEntry.className = 'file-entry';
         // Sprawdź rozszerzenie pliku PRZED dodaniem do przetwarzania
         if (file.name.toLowerCase().endsWith('.pdf')) {
-            fileEntry.innerHTML = `<span>${i + 1}. ${file.name} (${formatFileSize(file.size)})</span> <span class="status" style="color: orange;">⚠ PDF nieobsługiwany</span>`;
-            filesListDiv.appendChild(fileEntry);
-            // Nie dodawaj do processingPromises, ale dodaj null, aby zachować indeksowanie
-            processingPromises.push(Promise.resolve(null));
+            // Sprawdź rozmiar pliku PDF
+            if (file.size > 10 * 1024 * 1024) { // 10MB w bajtach
+                fileEntry.innerHTML = `<span>${i + 1}. ${file.name} (${formatFileSize(file.size)})</span> <span class="status" style="color: red;">✖ PDF zbyt duży (maks. 10MB)</span>`;
+                filesListDiv.appendChild(fileEntry);
+                // Nie dodawaj do processingPromises, ale dodaj null, aby zachować indeksowanie
+                processingPromises.push(Promise.resolve(null));
+            } else {
+                fileEntry.innerHTML = `<span>${i + 1}. ${file.name} (${formatFileSize(file.size)})</span> <span class="status">⏳ Przetwarzanie...</span>`;
+                filesListDiv.appendChild(fileEntry);
+                processingPromises.push(processSingleFile(file, i));
+            }
         } else {
             fileEntry.innerHTML = `<span>${i + 1}. ${file.name} (${formatFileSize(file.size)})</span> <span class="status">⏳ Przetwarzanie...</span>`;
             filesListDiv.appendChild(fileEntry);

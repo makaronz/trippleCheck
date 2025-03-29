@@ -8,8 +8,7 @@ import time
 import markdown
 import requests
 import json
-
-# Usunięto import PyPDF2
+import PyPDF2
 from PIL import Image
 import pytesseract
 import markdownify
@@ -19,10 +18,33 @@ from bs4 import BeautifulSoup
 # Przeniesiono do __init__.py lub konfiguracji, ale MAX_DOCUMENT_CHARS może tu zostać
 MAX_DOCUMENT_CHARS = 4000
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY") # Wczytane w __init__.py
+MAX_PDF_SIZE_MB = 10  # Maksymalny rozmiar pliku PDF w MB
 
 # --- Przetwarzanie Plików ---
 
-# Usunięto funkcję safe_extract_text_from_pdf
+def safe_extract_text_from_pdf(pdf_data):
+    """Bezpieczna ekstrakcja tekstu z pliku PDF. Rzuca wyjątek."""
+    try:
+        # Sprawdź rozmiar pliku
+        file_size_mb = len(pdf_data) / (1024 * 1024)  # Konwersja na MB
+        if file_size_mb > MAX_PDF_SIZE_MB:
+            raise ValueError(f"Plik PDF jest zbyt duży. Maksymalny rozmiar to {MAX_PDF_SIZE_MB} MB.")
+        
+        # Przetwarzanie PDF
+        pdf_file = io.BytesIO(pdf_data)
+        reader = PyPDF2.PdfReader(pdf_file)
+        
+        # Ekstrakcja tekstu ze wszystkich stron
+        text = ""
+        for page_num in range(len(reader.pages)):
+            page = reader.pages[page_num]
+            text += page.extract_text() + "\n\n"
+        
+        return text
+    except PyPDF2.errors.PdfReadError as e:
+        raise ValueError(f"Błąd podczas odczytu pliku PDF: {e}") from e
+    except Exception as e:
+        raise ValueError(f"Błąd podczas przetwarzania pliku PDF: {e}") from e
 
 def safe_extract_text_from_image(image_data):
     """Bezpieczna ekstrakcja tekstu z obrazu (OCR). Rzuca wyjątek."""
@@ -94,9 +116,14 @@ def process_uploaded_file(filename, file_data_base64):
         file_data = base64.b64decode(file_data_base64)
         filename_lower = filename.lower()
 
+        # Sprawdź rozmiar pliku (dla wszystkich typów)
+        file_size_mb = len(file_data) / (1024 * 1024)  # Konwersja na MB
+        
         if filename_lower.endswith('.pdf'):
-            # Zgłoś błąd zamiast przetwarzać PDF
-            raise ValueError("Przesyłanie plików PDF nie jest obsługiwane.")
+            # Sprawdź rozmiar pliku PDF
+            if file_size_mb > MAX_PDF_SIZE_MB:
+                raise ValueError(f"Plik PDF jest zbyt duży. Maksymalny rozmiar to {MAX_PDF_SIZE_MB} MB.")
+            content = safe_extract_text_from_pdf(file_data)
         elif filename_lower.endswith(('.jpg', '.jpeg', '.png')):
             content = safe_extract_text_from_image(file_data)
         elif filename_lower.endswith('.md'):
