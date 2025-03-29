@@ -187,24 +187,22 @@ async function sendQuery() {
     `;
     pipelineStepsDiv.appendChild(progressSection);
 
-    // Dodaj sekcje dla każdego kroku
+    // Dodaj sekcje dla każdego kroku (nowa struktura 3-etapowa)
     const analysisSection = createStepSection('Krok 1: Analiza zapytania', 'analysisStep');
     const perspectivesSection = createStepSection('Krok 2: Generowanie perspektyw', 'perspectivesStep');
-    const verificationSection = createStepSection('Krok 3: Weryfikacja odpowiedzi', 'verificationStep');
-    const synthesisSection = createStepSection('Krok 4: Synteza końcowa', 'synthesisStep');
-    
+    const verificationSynthesisSection = createStepSection('Krok 3: Weryfikacja i Synteza', 'verificationSynthesisStep'); // Nowy krok 3
+
     pipelineStepsDiv.appendChild(analysisSection);
     pipelineStepsDiv.appendChild(perspectivesSection);
-    pipelineStepsDiv.appendChild(verificationSection);
-    pipelineStepsDiv.appendChild(synthesisSection);
+    pipelineStepsDiv.appendChild(verificationSynthesisSection); // Dodano nowy krok 3
 
     // Aktualizuj postęp całkowity
     updateTotalProgress(0);
-    
+
     try {
-        // Krok 1: Analiza zapytania (25% całości)
+        // Krok 1: Analiza zapytania (33% całości)
         updateStepStatus('analysisStep', 'W trakcie...', 0);
-        loadingStatus.textContent = 'Krok 1/4: Analiza zapytania...';
+        loadingStatus.textContent = 'Krok 1/3: Analiza zapytania...'; // Zmieniono liczbę kroków
         
         const response = await fetch('/process_query', {
             method: 'POST',
@@ -260,12 +258,12 @@ async function sendQuery() {
             }
             
             document.getElementById('analysisStep').appendChild(analysisDetails);
-            updateTotalProgress(25);
+            updateTotalProgress(33); // Zmieniono postęp
         }
 
-        // Krok 2: Generowanie perspektyw (25% całości)
+        // Krok 2: Generowanie perspektyw (33% całości)
         updateStepStatus('perspectivesStep', 'W trakcie...', 0);
-        loadingStatus.textContent = 'Krok 2/4: Generowanie perspektyw...';
+        loadingStatus.textContent = 'Krok 2/3: Generowanie perspektyw...'; // Zmieniono liczbę kroków
         
         if (result.perspectives && Array.isArray(result.perspectives)) {
             const totalPerspectives = result.perspectives.length;
@@ -302,76 +300,46 @@ async function sendQuery() {
             });
             
             updateStepStatus('perspectivesStep', 'Zakończono', 100);
-            updateTotalProgress(50);
+            updateTotalProgress(66); // Zmieniono postęp
         }
 
-        // Krok 3: Weryfikacja (25% całości)
-        updateStepStatus('verificationStep', 'W trakcie...', 0);
-        loadingStatus.textContent = 'Krok 3/4: Weryfikacja odpowiedzi...';
-        
-        if (result.verification) {
-            // Dodaj szczegóły weryfikacji
-            const verificationDetails = document.createElement('div');
-            verificationDetails.className = 'step-details';
-            
+        // Krok 3: Weryfikacja i Synteza (34% całości)
+        updateStepStatus('verificationSynthesisStep', 'W trakcie...', 0);
+        loadingStatus.textContent = 'Krok 3/3: Weryfikacja i Synteza...'; // Zmieniono liczbę kroków
+
+        if (result.verification_synthesis_response) {
+            // Dodaj szczegóły Weryfikacji i Syntezy
+            const verificationSynthesisDetails = document.createElement('div');
+            verificationSynthesisDetails.className = 'step-details';
+
             // Dodaj informacje o modelu
             const modelInfo = document.createElement('div');
             modelInfo.className = 'model-info pixel-text';
-            modelInfo.innerHTML = `Model: ${result.verification_model || 'nousresearch/nous-hermes-2-mixtral-8x7b-dpo'}`;
-            verificationDetails.appendChild(modelInfo);
-            
+            modelInfo.innerHTML = `Model: ${result.verification_synthesis_model || 'openai/gpt-4o'}`; // Użyj nowego pola
+            verificationSynthesisDetails.appendChild(modelInfo);
+
             // Dodaj prompt
             const promptInfo = document.createElement('div');
             promptInfo.className = 'prompt-info';
             promptInfo.innerHTML = `<div class="prompt-header pixel-text">Prompt:</div>
-                                   <pre class="prompt-content">${escapeHtml(result.verification_prompt || 'Prompt niedostępny')}</pre>`;
-            verificationDetails.appendChild(promptInfo);
-            
-            // Dodaj wynik weryfikacji
-            const verificationContent = document.createElement('div');
-            verificationContent.className = 'verification-content';
-            verificationContent.innerHTML = `<div class="result-header pixel-text">Raport weryfikacji:</div>
-                                           <div class="markdown-content">${marked.parse(result.verification)}</div>`;
-            verificationDetails.appendChild(verificationContent);
-            
-            document.getElementById('verificationStep').appendChild(verificationDetails);
-            updateStepStatus('verificationStep', 'Zakończono', 100);
-            updateTotalProgress(75);
-        }
+                                   <pre class="prompt-content">${escapeHtml(result.verification_synthesis_prompt || 'Prompt niedostępny')}</pre>`; // Użyj nowego pola
+            verificationSynthesisDetails.appendChild(promptInfo);
 
-        // Krok 4: Synteza (25% całości)
-        updateStepStatus('synthesisStep', 'W trakcie...', 0);
-        loadingStatus.textContent = 'Krok 4/4: Synteza końcowa...';
-        
-        if (result.final_response) {
-            // Dodaj szczegóły syntezy
-            const synthesisDetails = document.createElement('div');
-            synthesisDetails.className = 'step-details';
-            
-            // Dodaj informacje o modelu
-            const modelInfo = document.createElement('div');
-            modelInfo.className = 'model-info pixel-text';
-            modelInfo.innerHTML = `Model: ${result.synthesis_model || 'nousresearch/nous-hermes-2-mixtral-8x7b-dpo'}`;
-            synthesisDetails.appendChild(modelInfo);
-            
-            // Dodaj prompt
-            const promptInfo = document.createElement('div');
-            promptInfo.className = 'prompt-info';
-            promptInfo.innerHTML = `<div class="prompt-header pixel-text">Prompt:</div>
-                                   <pre class="prompt-content">${escapeHtml(result.synthesis_prompt || 'Prompt niedostępny')}</pre>`;
-            synthesisDetails.appendChild(promptInfo);
-            
-            document.getElementById('synthesisStep').appendChild(synthesisDetails);
-            
-            // Renderowanie odpowiedzi końcowej
-            finalResponseDiv.innerHTML = marked.parse(result.final_response);
-            finalResponseCard.style.display = 'block';
-            
-            updateStepStatus('synthesisStep', 'Zakończono', 100);
-            updateTotalProgress(100);
+            // Dodaj wynik Weryfikacji i Syntezy (który zawiera raport i finalną odpowiedź)
+            const verificationSynthesisContent = document.createElement('div');
+            verificationSynthesisContent.className = 'verification-synthesis-content'; // Nowa klasa CSS?
+            // Renderuj całą odpowiedź jako Markdown, ponieważ zawiera ona już nagłówki raportu i finalnej odpowiedzi
+            verificationSynthesisContent.innerHTML = `<div class="result-header pixel-text">Wynik Weryfikacji i Syntezy:</div>
+                                                    <div class="markdown-content">${marked.parse(result.verification_synthesis_response)}</div>`; // Użyj nowego pola
+            verificationSynthesisDetails.appendChild(verificationSynthesisContent);
+
+            document.getElementById('verificationSynthesisStep').appendChild(verificationSynthesisDetails);
+            updateStepStatus('verificationSynthesisStep', 'Zakończono', 100);
+            updateTotalProgress(100); // Zmieniono postęp
         }
 
         loadingStatus.textContent = 'Przetwarzanie zakończone!';
+        // Usunięto logikę dla finalResponseCard
 
     } catch (error) {
         console.error('Błąd podczas przetwarzania zapytania:', error);

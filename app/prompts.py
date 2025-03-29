@@ -66,18 +66,56 @@ Format in Markdown:
 * **Overall:** [1-2 sentence summary]
 """
 
-# Prompt Syntezy (Uproszczony)
-SYNTHESIS_PROMPT_V2 = """
-Create a final response to: {query}
+# Nowy Prompt Weryfikacji i Syntezy
+VERIFICATION_SYNTHESIS_PROMPT = """
+You are an expert evaluator and synthesizer. Your task is to analyze two perspectives provided in response to a user query, verify their content, compare them, and then synthesize a final, improved, and verified answer.
 
-Based on:
-1. Original response: {perspectives_summary}
-2. Verification: {verification_report}
+User Query:
+{query}
+
+Perspective 1 ({model_1_name} - {model_1_spec}):
+--- START PERSPECTIVE 1 ---
+{perspective_1_response}
+--- END PERSPECTIVE 1 ---
+
+Perspective 2 ({model_2_name} - {model_2_spec}):
+--- START PERSPECTIVE 2 ---
+{perspective_2_response}
+--- END PERSPECTIVE 2 ---
 
 Instructions:
-1. Fix any issues noted in verification
-2. Be concise and clear
-3. Use Markdown formatting
-4. Focus directly on answering the query
-5. Provide a standalone, complete answer
+
+1.  **Verification:**
+    *   Critically evaluate BOTH perspectives for factual accuracy, completeness, and relevance to the query.
+    *   You MUST use your knowledge and access to real-time information (internet access) to verify claims, data, and facts presented in both perspectives.
+    *   Identify any inaccuracies, outdated information, or potential biases.
+
+2.  **Comparison:**
+    *   Compare the strengths and weaknesses of each perspective.
+    *   Which perspective is more helpful, accurate, or comprehensive? Why?
+    *   Are there any contradictions between the perspectives?
+
+3.  **Synthesis:**
+    *   Create a final, comprehensive, and accurate response to the user's query.
+    *   Combine the best elements and verified information from both perspectives.
+    *   Correct any errors or inaccuracies identified during verification.
+    *   Ensure the final answer is well-structured, clear, concise, and directly addresses the user's query.
+    *   Use Markdown formatting for clarity (headings, lists, bold text, etc.).
+    *   If citing sources, ensure they are accurate and properly formatted.
+
+Output Format:
+
+Return your response as a single block of text containing the following sections clearly marked with Markdown headings:
+
+## Verification and Comparison Report
+
+*   **Perspective 1 Accuracy:** [Brief assessment with specific examples of errors/correct points]
+*   **Perspective 2 Accuracy:** [Brief assessment with specific examples of errors/correct points]
+*   **Completeness:** [Assessment of how well both perspectives cover the query]
+*   **Relevance:** [Assessment of relevance]
+*   **Comparison Summary:** [Brief comparison of strengths/weaknesses, contradictions, and overall helpfulness]
+
+## Final Synthesized Answer
+
+[Your final, synthesized, and verified answer to the user's query goes here, formatted in Markdown.]
 """

@@ -10,8 +10,7 @@ from .utils import process_uploaded_file, call_openrouter_api, call_google_gemin
 from .prompts import (
     QUERY_ANALYSIS_PROMPT_V2,
     RESPONSE_GENERATION_PROMPT_V2,
-    VERIFICATION_PROMPT_V2,
-    SYNTHESIS_PROMPT_V2
+    VERIFICATION_SYNTHESIS_PROMPT # Zmieniono import
 )
 
 # Tworzymy Blueprint
@@ -31,8 +30,7 @@ MAX_PERSPECTIVES = 1 # Zmieniono na 1 zgodnie z nowymi wytycznymi
 ANALYSIS_MODEL = "anthropic/claude-3-haiku" # Bardziej niezawodny model do analizy JSON
 PERSPECTIVE_MODEL_1 = "google/gemini-2.0-flash-001" # Model 1 z dostępem do internetu (Gemini 2)
 PERSPECTIVE_MODEL_2 = "anthropic/claude-3-sonnet" # Model 2 z dostępem do internetu (inny model)
-VERIFICATION_MODEL = "openai/gpt-4o" # Model do weryfikacji z dostępem do internetu
-SYNTHESIS_MODEL = "anthropic/claude-3-haiku" # Model do syntezy (używamy OpenRouter zamiast API Google)
+VERIFICATION_SYNTHESIS_MODEL = "openai/gpt-4o" # Model do weryfikacji i syntezy
 MAX_PERSPECTIVES = 2 # Przywrócono 2 perspektywy
 
 # Klucze API - Pobierane ze zmiennych środowiskowych
@@ -235,95 +233,60 @@ def process_query_endpoint():
         # --- Koniec Generowania Perspektyw ---
 
 
-        # --- Krok 3: Weryfikacja Odpowiedzi ---
-        current_app.logger.info(f"Krok 3/4: Weryfikacja odpowiedzi (model: {VERIFICATION_MODEL})...")
-        verification_prompt = None # Reset
-        verification_report = f"BŁĄD: Nie udało się przeprowadzić weryfikacji." # Domyślny błąd
+        # --- Krok 3: Weryfikacja i Synteza ---
+        current_app.logger.info(f"Krok 3/3: Weryfikacja i Synteza (model: {VERIFICATION_SYNTHESIS_MODEL})...")
+        verification_synthesis_prompt = None # Reset
+        verification_synthesis_response = f"BŁĄD: Nie udało się przeprowadzić weryfikacji i syntezy." # Domyślny błąd
 
-        # Sprawdzamy, czy mamy perspektywy do weryfikacji
-        if len(perspectives_results) > 0:
-            # Weryfikujemy pierwszą perspektywę (najważniejszą)
-            perspective_to_verify = perspectives_results[0]
+        # Sprawdzamy, czy mamy obie perspektywy
+        if len(perspectives_results) == 2:
+            p1 = perspectives_results[0]
+            p2 = perspectives_results[1]
             try:
-                verification_args = {
+                verification_synthesis_args = {
                     'query': query,
-                    'model_name': perspective_to_verify.get('model', 'N/A'),
-                    'model_spec': perspective_to_verify.get('specialization', 'N/A'),
-                    'perspective_response': perspective_to_verify.get('response', 'Brak')
+                    'model_1_name': p1.get('model', 'N/A'),
+                    'model_1_spec': p1.get('specialization', 'N/A'),
+                    'perspective_1_response': p1.get('response', 'Brak'),
+                    'model_2_name': p2.get('model', 'N/A'),
+                    'model_2_spec': p2.get('specialization', 'N/A'),
+                    'perspective_2_response': p2.get('response', 'Brak')
                 }
-                verification_prompt = VERIFICATION_PROMPT_V2.format(**verification_args)
+                verification_synthesis_prompt = VERIFICATION_SYNTHESIS_PROMPT.format(**verification_synthesis_args)
 
                 # Używamy klucza OpenRouter z UI
-                verification_report = call_openrouter_api(
+                verification_synthesis_response = call_openrouter_api(
                     api_key=openrouter_api_key,
-                    model=VERIFICATION_MODEL,
-                    prompt_content=verification_prompt
+                    model=VERIFICATION_SYNTHESIS_MODEL,
+                    prompt_content=verification_synthesis_prompt
                 )
-                current_app.logger.info("Weryfikacja zakończona.")
+                current_app.logger.info("Weryfikacja i Synteza zakończona.")
             except Exception as e:
-                 current_app.logger.error(f"Błąd podczas kroku weryfikacji (model: {VERIFICATION_MODEL}): {e}", exc_info=True)
-                 verification_prompt = verification_prompt if verification_prompt else "Błąd formatowania promptu weryfikacji"
-                 verification_report = f"BŁĄD: Nie udało się przeprowadzić weryfikacji.\nSzczegóły: {e}"
-        else:
-            current_app.logger.warning("Krok 3: Pominięto weryfikację - brak perspektyw do weryfikacji.")
-            verification_report = "Pominięto - brak perspektyw do weryfikacji."
-            verification_prompt = "Pominięto - brak perspektyw do weryfikacji."
-        # --- Koniec Weryfikacji ---
-
-
-        # --- Krok 4: Synteza i Konkluzja ---
-        current_app.logger.info(f"Krok 4/4: Synteza odpowiedzi końcowej (model: {SYNTHESIS_MODEL})...")
-        synthesis_prompt = None # Reset
-        final_response = f"BŁĄD: Nie udało się przeprowadzić syntezy odpowiedzi." # Domyślny błąd
-        try:
-            # Przygotuj podsumowanie wszystkich perspektyw
-            perspectives_summary_for_prompt = "Brak perspektyw do podsumowania."
-            if perspectives_results:
-                perspectives_texts = []
-                for i, p in enumerate(perspectives_results):
-                    perspectives_texts.append(f"--- START PERSPECTIVE {i+1} ({p.get('model', 'N/A')} - {p.get('specialization', 'N/A')}) ---\n{p.get('response', 'Brak')}\n--- END PERSPECTIVE {i+1} ---")
-                perspectives_summary_for_prompt = "\n\n".join(perspectives_texts)
-
-            synthesis_prompt = SYNTHESIS_PROMPT_V2.format(
-                    query=query,
-                    perspectives_summary=perspectives_summary_for_prompt,
-                    verification_report=verification_report
-                )
-            # Używamy OpenRouter zamiast API Google
-            final_response = call_openrouter_api(
-                api_key=openrouter_api_key, # Używamy klucza OpenRouter z UI
-                model=SYNTHESIS_MODEL,
-                prompt_content=synthesis_prompt
-            )
-            current_app.logger.info("Synteza zakończona.")
-        except Exception as e:
-            current_app.logger.error(f"Błąd podczas kroku syntezy (model: {SYNTHESIS_MODEL}): {e}", exc_info=True)
-            synthesis_prompt = synthesis_prompt if synthesis_prompt else "Błąd formatowania promptu syntezy"
-            final_response = f"BŁĄD: Nie udało się przeprowadzić syntezy odpowiedzi.\nSzczegóły: {e}"
-        # --- Koniec Syntezy ---
+                 current_app.logger.error(f"Błąd podczas kroku Weryfikacji i Syntezy (model: {VERIFICATION_SYNTHESIS_MODEL}): {e}", exc_info=True)
+                 verification_synthesis_prompt = verification_synthesis_prompt if verification_synthesis_prompt else "Błąd formatowania promptu weryfikacji i syntezy"
+                 verification_synthesis_response = f"BŁĄD: Nie udało się przeprowadzić weryfikacji i syntezy.\nSzczegóły: {e}"
+        elif len(perspectives_results) < 2:
+             current_app.logger.warning("Krok 3: Pominięto Weryfikację i Syntezę - nie wygenerowano obu perspektyw.")
+             verification_synthesis_response = "Pominięto - nie wygenerowano obu perspektyw."
+             verification_synthesis_prompt = "Pominięto - nie wygenerowano obu perspektyw."
+        # --- Koniec Weryfikacji i Syntezy ---
 
 
         # --- Zwrócenie Wyników ---
         return jsonify({
             # Analiza
-            "analysis_raw": analysis_raw, # Surowa odpowiedź
-            "analysis_json": analysis_json, # Sparsowana odpowiedź (może być None)
+            "analysis_raw": analysis_raw,
+            "analysis_json": analysis_json,
             "analysis_model": ANALYSIS_MODEL,
             "analysis_prompt": analysis_prompt,
-            # Usunięto selected_perspective_models, bo jest stały
 
-            # Perspektywy (rzeczywiste wyniki, bez późniejszego paddingu)
-            "perspectives": perspectives_results, # Zwracamy listę (nawet jeśli 1 element)
+            # Perspektywy
+            "perspectives": perspectives_results,
 
-            # Weryfikacja
-            "verification": verification_report,
-            "verification_model": VERIFICATION_MODEL,
-            "verification_prompt": verification_prompt,
-
-            # Synteza
-            "final_response": final_response,
-            "synthesis_model": SYNTHESIS_MODEL,
-            "synthesis_prompt": synthesis_prompt
+            # Weryfikacja i Synteza
+            "verification_synthesis_response": verification_synthesis_response,
+            "verification_synthesis_model": VERIFICATION_SYNTHESIS_MODEL,
+            "verification_synthesis_prompt": verification_synthesis_prompt
         })
         # --- Koniec Zwracania Wyników ---
 
