@@ -10,15 +10,20 @@ services:
     buildCommand: |
       # 1. Zainstaluj zależności backendu
       pip install -r fastapi_app/requirements.txt
-      # 2. Zainstaluj Node.js i npm (wymagane dla budowania frontendu)
-      curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
-      apt-get install -y nodejs
-      # 3. Zbuduj frontend
+      # 2. Zbuduj frontend (Render już ma zainstalowany Node.js)
       cd frontend && npm install && npm run build
-      # 4. Utwórz katalog dla plików statycznych, jeśli nie istnieje
+      # 3. Wyświetl informacje o strukturze katalogu dla debugowania
+      echo "Sprawdzanie struktury katalogów po budowaniu:"
+      ls -la frontend/
+      ls -la frontend/.svelte-kit/ || echo "Brak katalogu .svelte-kit"
+      ls -la frontend/build/ || echo "Brak katalogu build"
+      # 4. Utwórz katalog dla plików statycznych
       mkdir -p fastapi_app/app/static/dist
       # 5. Skopiuj zbudowane pliki frontendu do katalogu static backendu
-      cp -r frontend/build/* fastapi_app/app/static/dist/
+      # Użyjemy prawidłowej ścieżki do zbudowanych plików
+      cp -r frontend/.svelte-kit/output/client/* fastapi_app/app/static/dist/ || \
+      cp -r frontend/build/* fastapi_app/app/static/dist/ || \
+      echo "Nie udało się skopiować plików statycznych. Sprawdź logi powyżej."
     # Komenda do uruchomienia aplikacji w trybie produkcyjnym
     startCommand: cd fastapi_app && gunicorn -w 4 -k uvicorn.workers.UvicornWorker app.main:app --bind 0.0.0.0:$PORT
     # Zmienne środowiskowe (klucz API należy ustawić w panelu Render)
