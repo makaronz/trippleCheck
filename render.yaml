@@ -1,50 +1,31 @@
 # Konfiguracja wdrożenia aplikacji FastAPI na Render.com
 
 services:
-  # Definicja usługi webowej dla backendu FastAPI
+  # Jedna usługa webowa dla backendu FastAPI + frontendu SvelteKit
   - type: web
-    name: pixel-pasta-ai-backend # Nazwa usługi w Render
+    name: pixel-pasta-ai-app # Nazwa usługi w Render
     env: python # Użyj środowiska Python
-    region: frankfurt # Wybierz region najbliższy Tobie/Twoim użytkownikom (np. Frankfurt, Oregon)
+    region: frankfurt # Wybierz region najbliższy Tobie/Twoim użytkownikom
     plan: free # Wybierz plan (darmowy ma ograniczenia)
-    # Komenda do zbudowania zależności
-    buildCommand: pip install -r fastapi_app/requirements.txt
+    buildCommand: |
+      # 1. Zainstaluj zależności backendu
+      pip install -r fastapi_app/requirements.txt
+      # 2. Zainstaluj Node.js i npm (wymagane dla budowania frontendu)
+      curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
+      apt-get install -y nodejs
+      # 3. Zbuduj frontend
+      cd frontend && npm install && npm run build
+      # 4. Utwórz katalog dla plików statycznych, jeśli nie istnieje
+      mkdir -p fastapi_app/app/static/dist
+      # 5. Skopiuj zbudowane pliki frontendu do katalogu static backendu
+      cp -r frontend/build/* fastapi_app/app/static/dist/
     # Komenda do uruchomienia aplikacji w trybie produkcyjnym
-    # Używa Gunicorn z workerem Uvicorn. Dostosuj liczbę workerów (-w) w zależności od planu Render.
-    startCommand: gunicorn -w 4 -k uvicorn.workers.UvicornWorker fastapi_app.app.main:app --bind 0.0.0.0:$PORT
+    startCommand: cd fastapi_app && gunicorn -w 4 -k uvicorn.workers.UvicornWorker app.main:app --bind 0.0.0.0:$PORT
     # Zmienne środowiskowe (klucz API należy ustawić w panelu Render)
     envVars:
       - key: PYTHON_VERSION # Render może wymagać określenia wersji Pythona
         value: 3.11 # Użyj wersji kompatybilnej z Twoimi zależnościami
       - key: OPENROUTER_API_KEY
         sync: false # Nie synchronizuj z repozytorium, ustaw w panelu Render
-      - key: APP_URL # Opcjonalne, jeśli potrzebujesz dla nagłówka Referer
-        fromService: # Automatycznie pobierz URL usługi z Render
-          type: web
-          name: pixel-pasta-ai-backend
-          property: url
       # UWAGA: Tesseract OCR nie jest instalowany w tej konfiguracji.
       # Funkcjonalność OCR dla obrazów/PDF nie będzie działać w produkcji bez modyfikacji.
-      # Rozważ użycie Dockerfile: https://render.com/docs/docker
-
-  # Definicja usługi statycznej dla frontendu SvelteKit
-  - type: static_site # Użycie typu 'static_site' (z podkreślnikiem)
-    name: pixel-pasta-ai-frontend
-    env: node # Jawne określenie środowiska Node.js do budowania
-    region: frankfurt # Użyj tego samego regionu co backend
-    plan: free
-    buildCommand: cd frontend && npm install && npm run build # Komendy budowania frontendu
-    staticPublishPath: frontend/build # Ścieżka do zbudowanych plików statycznych (zakładając adapter-static)
-    # Definicja zmiennej środowiskowej dla frontendu, aby znał adres backendu
-    envVars:
-      - key: VITE_FASTAPI_URL # Nazwa zmiennej używana przez Vite/SvelteKit
-        fromService: # Pobierz URL z usługi backendu
-          type: web
-          name: pixel-pasta-ai-backend # Nazwa usługi backendu
-          property: url
-          # UWAGA: Render wstrzykuje zmienne środowiskowe *podczas budowania*.
-          # Upewnij się, że kod SvelteKit odczytuje tę zmienną poprawnie (np. przez import.meta.env.VITE_FASTAPI_URL).
-    routes:
-      - type: rewrite # Przekieruj wszystkie ścieżki do index.html dla routingu SPA
-        source: /*
-        destination: /index.html

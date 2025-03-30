@@ -1,6 +1,10 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import os
+from pathlib import Path
 
 # Załaduj zmienne środowiskowe z pliku .env
 load_dotenv()
@@ -9,27 +13,50 @@ load_dotenv()
 from .routers import process, files # Dodano import files
 
 app = FastAPI(
-    title="AI Agent - FastAPI Edition",
+    title="Pixel Pasta AI Agent",
     description="Przeprojektowana aplikacja AI z asynchronicznym potokiem i wieloma perspektywami.",
     version="1.0.0"
 )
 
-# Dołączanie routerów
-app.include_router(process.router)
-app.include_router(files.router) # Dodano router plików
+# Określ ścieżkę do katalogu ze statycznymi plikami (frontend assets)
+static_files_dir = Path(__file__).parent / "static" / "dist"
+api_app = FastAPI(title="API")
 
-@app.get("/", tags=["General"])
-async def read_root():
-    """Podstawowy endpoint sprawdzający działanie aplikacji."""
-    return {"message": "Witaj w AI Agent - FastAPI Edition!"}
+# Dołączanie routerów do pod-aplikacji API
+api_app.include_router(process.router)
+api_app.include_router(files.router)
 
-# Konfiguracja CORS dla frontendu SvelteKit (domyślnie port 5173)
-from fastapi.middleware.cors import CORSMiddleware
+# Dołącz pod-aplikację API pod prefiksem /api/v1
+app.mount("/api/v1", api_app)
 
+# Dodaj obsługę plików statycznych, jeśli katalog istnieje
+if static_files_dir.exists():
+    app.mount("/", StaticFiles(directory=str(static_files_dir), html=True), name="static")
+
+    @app.get("/", include_in_schema=False)
+    async def serve_spa():
+        """Serwuj główny plik HTML aplikacji SvelteKit (Single Page Application)"""
+        index_path = static_files_dir / "index.html"
+        if index_path.exists():
+            return FileResponse(index_path)
+        raise HTTPException(status_code=404, detail="Frontend nie jest dostępny")
+else:
+    # Fallback, gdy katalog statycznych plików nie istnieje
+    @app.get("/", tags=["General"])
+    async def read_root():
+        """Podstawowy endpoint sprawdzający działanie aplikacji."""
+        return {"message": "API działa poprawnie. Frontend nie jest dostępny."}
+
+# Konfiguracja CORS
+
+# Parametry z origins konwertowane są na regex
 origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-    # Można dodać inne dozwolone źródła, np. adres produkcyjny
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://pixel-pasta-ai-app.onrender.com",
+    # Dodać inne produkcyjne domeny, jeśli potrzeba
 ]
 
 app.add_middleware(

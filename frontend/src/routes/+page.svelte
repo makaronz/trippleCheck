@@ -12,10 +12,11 @@
   let responseData: any = null; // Odpowiedź z backendu
   let errorMessage = ''; // Komunikat błędu
 
-  // Odczytaj URL backendu ze zmiennej środowiskowej Vite
-  // Użyj wartości domyślnej dla lokalnego rozwoju, jeśli zmienna nie jest ustawiona
-  const FASTAPI_URL = browser ? (import.meta.env.VITE_FASTAPI_URL || 'http://127.0.0.1:8000') : 'http://127.0.0.1:8000';
-  console.log(`Using FastAPI backend URL: ${FASTAPI_URL}`); // Log do debugowania
+  // W wersji produkcyjnej używamy względnych ścieżek, ponieważ backend i frontend są na tej samej domenie
+  // Dla lokalnego rozwoju można użyć pełnego URL, jeśli frontend i backend działają na różnych portach
+  const useRelativeUrls = !import.meta.env.DEV; // W trybie produkcyjnym używaj względnych URL
+  const apiBaseUrl = useRelativeUrls ? '' : (import.meta.env.VITE_FASTAPI_URL || 'http://127.0.0.1:8000');
+  console.log(`API base URL: ${apiBaseUrl || '(using relative URLs)'}`);
 
   // Funkcja do odczytu pliku jako base64
   function readFileAsBase64(file: File): Promise<string> {
@@ -55,9 +56,10 @@
           fileProcessingStatus = { ...fileProcessingStatus, [fileName]: 'Przetwarzanie...' };
           try {
               const base64Data = await readFileAsBase64(file);
-              const response = await fetch(`${FASTAPI_URL}/api/v1/process_file`, {
+              const response = await fetch(`${apiBaseUrl}/api/v1/process_file`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
+                  credentials: 'same-origin', // Pozwól przesyłać ciasteczka przy tym samym pochodzeniu
                   body: JSON.stringify({
                       filename: fileName,
                       file_data_base64: base64Data,
@@ -111,11 +113,12 @@
     };
 
     try {
-      const response = await fetch(`${FASTAPI_URL}/api/v1/process_query`, {
+      const response = await fetch(`${apiBaseUrl}/api/v1/process_query`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'same-origin', // Pozwól przesyłać ciasteczka przy tym samym pochodzeniu
         body: JSON.stringify(requestBody),
       });
 
