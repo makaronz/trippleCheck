@@ -1,0 +1,18 @@
+fastapi
+uvicorn[standard] # ASGI server with standard dependencies (like websockets)
+httpx # Async HTTP client for calling OpenRouter API
+python-dotenv # For loading environment variables from .env
+pydantic # For data validation
+gunicorn # Production ASGI/WSGI server for Render
+
+# Dependencies for file processing
+Pillow # Image processing (needed by pytesseract and potentially ocrmypdf)
+pytesseract # Python wrapper for Tesseract OCR
+markdownify # Markdown conversion
+beautifulsoup4 # HTML parsing (used by markdownify)
+markdown # Markdown parsing
+PyMuPDF # Advanced PDF text extraction (replaces PyPDF2)
+ocrmypdf # OCR for image-based PDFs (depends on tesseract-ocr being installed system-wide)
+
+# Optional for language detection
+# langdetect
