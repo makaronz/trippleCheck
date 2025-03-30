@@ -27,10 +27,10 @@ services:
       # Funkcjonalność OCR dla obrazów/PDF nie będzie działać w produkcji bez modyfikacji.
       # Rozważ użycie Dockerfile: https://render.com/docs/docker
 
-  # Definicja usługi Static Site dla frontendu SvelteKit
-  - type: static site # Poprawiono typ usługi na "static site"
+  # Definicja usługi statycznej dla frontendu SvelteKit (używając typu 'static' z env 'node')
+  - type: static # Użycie typu 'static'
     name: pixel-pasta-ai-frontend
-    env: node # Użyj środowiska Node.js do budowania
+    env: node # Jawne określenie środowiska Node.js do budowania
     region: frankfurt # Użyj tego samego regionu co backend
     plan: free
     buildCommand: cd frontend && npm install && npm run build # Komendy budowania frontendu
