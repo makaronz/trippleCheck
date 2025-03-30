@@ -1,63 +1,84 @@
-# AI Agent - Pixel Pasta (trippleCheck)
+# AI Agent - Pixel Pasta (trippleCheck) - FastAPI & SvelteKit Edition
 
-Prosta aplikacja webowa Flask, która wykorzystuje potok modeli AI (analiza, generowanie perspektywy, weryfikacja, synteza) do odpowiadania na zapytania użytkownika, z możliwością dodania plików tekstowych lub obrazów jako kontekstu.
+A web application featuring a FastAPI backend and a SvelteKit frontend. It utilizes an AI pipeline (analysis, perspective generation, verification, synthesis) to answer user queries, with the option to add text or image files as context.
 
-## Funkcjonalności
+## Features
 
-*   Przetwarzanie zapytań w języku naturalnym.
-*   Obsługa przesyłania plików `.txt`, `.md`, `.jpg`, `.png` jako dodatkowego kontekstu (OCR dla obrazów).
-*   Wykorzystanie modeli AI z OpenRouter i Google Gemini API.
-*   4-etapowy potok przetwarzania:
-    1.  **Analiza:** Zrozumienie zapytania i kontekstu.
-    2.  **Generowanie Perspektywy:** Stworzenie odpowiedzi przez wybrany model.
-    3.  **Weryfikacja:** Ocena wygenerowanej perspektywy.
-    4.  **Synteza:** Stworzenie finalnej, spójnej odpowiedzi.
-*   Interfejs użytkownika w stylu pixel art.
+*   Processes natural language queries.
+*   Supports uploading `.txt`, `.pdf`, `.md`, `.jpg`, `.jpeg`, `.png`, `.gif`, `.bmp`, `.tiff` files as additional context (OCR for images).
+*   Utilizes AI models from OpenRouter.
+*   Features a 3-step AI processing pipeline:
+    1.  **Analysis:** Understands the query and context.
+    2.  **Perspective Generation:** Creates three distinct perspectives (Informative, Contrarian, Complementary) in parallel.
+    3.  **Verification & Synthesis:** Evaluates the perspectives using Google Search, compares them, and synthesizes a final, verified answer.
+*   Pixel art styled user interface built with SvelteKit.
 
-## Konfiguracja Lokalna
+## Local Setup
 
-1.  **Sklonuj repozytorium:**
+1.  **Clone the repository:**
     ```bash
     git clone https://github.com/makaronz/trippleCheck.git
     cd trippleCheck
     ```
-2.  **Utwórz i aktywuj środowisko wirtualne (zalecane):**
+2.  **Create and activate a virtual environment (recommended):**
     ```bash
+    # Create environment for backend
     python -m venv venv
     # Windows
     .\venv\Scripts\activate
     # macOS/Linux
     source venv/bin/activate
     ```
-3.  **Zainstaluj zależności:**
+3.  **Install backend dependencies:**
     ```bash
-    pip install -r requirements.txt
+    pip install -r fastapi_app/requirements.txt
     ```
-4.  **Skonfiguruj zmienne środowiskowe:**
-    *   Utwórz plik `.env` w głównym katalogu projektu.
-    *   Dodaj do niego następujące klucze API:
+4.  **Install frontend dependencies:**
+    ```bash
+    cd frontend
+    npm install
+    cd ..
+    ```
+5.  **Configure environment variables:**
+    *   Create a file named `.env` in the **root** directory of the project (where `render.yaml` is).
+    *   Add your OpenRouter API key:
         ```dotenv
-        SECRET_KEY=wygeneruj_losowy_sekretny_klucz
-        OPENAI_API_KEY=twoj_klucz_openai_api
-        GOOGLE_API_KEY=twoj_klucz_google_gemini_api
+        # Used by the FastAPI backend
+        OPENROUTER_API_KEY=your_openrouter_api_key
+
+        # Optional: Define if frontend runs on a different port during local dev
+        # VITE_FASTAPI_URL=http://127.0.0.1:8000
         ```
-    *   Zastąp wartości swoimi kluczami. `SECRET_KEY` może być dowolnym losowym ciągiem znaków.
-5.  **(Opcjonalnie) Zainstaluj Tesseract OCR:**
-    *   Jeśli chcesz przetwarzać pliki obrazów (`.jpg`, `.png`), musisz zainstalować Tesseract OCR: [Instrukcje instalacji Tesseract](https://github.com/tesseract-ocr/tesseract#installing-tesseract).
-    *   Upewnij się, że Tesseract jest dodany do zmiennej środowiskowej `PATH` Twojego systemu, lub ustaw zmienną `TESSERACT_CMD` w pliku `.env`, wskazującą na plik wykonywalny Tesseracta.
-6.  **Uruchom aplikację:**
-    ```bash
-    python run.py
-    ```
-    Aplikacja będzie dostępna pod adresem `http://127.0.0.1:5000`.
+    *   Replace `your_openrouter_api_key` with your actual key.
+6.  **(Optional) Install Tesseract OCR:**
+    *   If you want to process image files (`.jpg`, `.png`, etc.), you need to install Tesseract OCR: [Tesseract Installation Instructions](https://github.com/tesseract-ocr/tesseract#installing-tesseract).
+    *   Ensure Tesseract is added to your system's `PATH` environment variable. The application uses `ocrmypdf` and `pytesseract` which rely on the system's Tesseract installation.
+7.  **Run the application (Development Mode):**
+    *   **Terminal 1 (Backend):**
+        ```bash
+        # Make sure your virtual environment is activated
+        cd fastapi_app
+        uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+        ```
+    *   **Terminal 2 (Frontend):**
+        ```bash
+        cd frontend
+        npm run dev
+        ```
+    *   The application frontend will be available at `http://localhost:5173` (or another port if 5173 is busy), and the backend API at `http://127.0.0.1:8000`.
 
-## Wdrożenie
+## Deployment (Render.com)
 
-Aplikacja jest skonfigurowana do wdrożenia na platformie [Render](https://render.com/).
+The application is configured for deployment on [Render](https://render.com/) using a single web service.
 
-*   **Serwer produkcyjny:** Gunicorn
-*   **Plik konfiguracyjny:** `Procfile` (`web: gunicorn "app:create_app()"`)
-*   **Zależności:** `requirements.txt`
-*   **Zmienne środowiskowe na Render:** Należy ustawić `SECRET_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY` (oraz opcjonalnie `PYTHON_VERSION` i `TESSERACT_CMD`, jeśli jest potrzebny).
+*   **Configuration File:** `render.yaml` defines the build and start commands.
+*   **Build Process:**
+    1.  Installs Python dependencies (`fastapi_app/requirements.txt`).
+    2.  Installs Node.js dependencies and builds the SvelteKit frontend (`cd frontend && npm install && npm run build`).
+    3.  Copies the built frontend static files into the FastAPI static directory (`fastapi_app/app/static/dist/`).
+*   **Start Command:** Uses Gunicorn to run the FastAPI application (`cd fastapi_app && gunicorn ... app.main:app ...`).
+*   **Environment Variables on Render:** You **must** set the `OPENROUTER_API_KEY` secret environment variable in the Render service settings. The `PYTHON_VERSION` is set in `render.yaml`.
 
-Po wypchnięciu zmian do gałęzi `main` na GitHubie, Render powinien automatycznie (jeśli tak skonfigurowano) lub manualnie (przez "Deploy latest commit") rozpocząć proces wdrażania.
+Render automatically detects `render.yaml` when creating a "Blueprint" service connected to your GitHub repository. Pushing changes to the connected branch will trigger a new deployment.
+
+**Note on OCR:** Tesseract OCR is **not** installed by default in the Render Python environment defined in `render.yaml`. Image OCR functionality will **not** work in the deployed version unless you modify the deployment (e.g., by using a Dockerfile that includes Tesseract).

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Krok 1: Analiza Zapytania
+# Step 1: Query Analysis
 QUERY_ANALYSIS_PROMPT = """
 Analyze the user's query and document context to determine:
 1. Main topics/entities
@@ -28,9 +28,9 @@ Available Documents Summary:
 {documents_summary}
 """
 
-# Krok 2: Generowanie Perspektyw
+# Step 2: Perspective Generation
 
-# P1: Perspektywa Informacyjna (np. Llama 3)
+# P1: Informative Perspective (e.g., Llama 3)
 INFORMATIVE_PERSPECTIVE_PROMPT = """
 You are model: {model_name}. Your strength is: Comprehensive information gathering and factual reporting.
 
@@ -61,7 +61,7 @@ Instructions:
 7. Structure your response logically.
 """
 
-# P2: Perspektywa Kontrariańska (np. NeuralBeagle)
+# P2: Contrarian Perspective (e.g., OpenHermes)
 CONTRARIAN_PERSPECTIVE_PROMPT = """
 You are model: {model_name}. Your strength is: Critical thinking and identifying counterarguments or alternative viewpoints.
 
@@ -91,7 +91,7 @@ Instructions:
 6. Clearly state the alternative/critical perspective you are presenting.
 """
 
-# P3: Perspektywa Komplementarna/Alternatywna (np. DeepSeek Coder)
+# P3: Complementary/Alternative Perspective (e.g., Qwen Coder)
 COMPLEMENTARY_PERSPECTIVE_PROMPT = """
 You are model: {model_name}. Your strength is: Deep reasoning and analyzing issues from complementary, often overlooked angles.
 
@@ -122,7 +122,7 @@ Instructions:
 6. Clearly state the complementary perspective you are exploring.
 """
 
-# Krok 3: Weryfikacja i Obiektywna Synteza (np. Gemini 1.5 Pro Free)
+# Step 3: Verification and Objective Synthesis (e.g., Gemini 1.5 Pro Free)
 VERIFICATION_OBJECTIVE_SYNTHESIS_PROMPT = """
 You are an expert evaluator and synthesizer with access to Google Search capabilities. Your task is to analyze three diverse perspectives provided in response to a user query, verify their content using real-time information, compare them objectively, and then synthesize a final, comprehensive, and verified answer.
 

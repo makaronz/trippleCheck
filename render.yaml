@@ -1,36 +1,62 @@
-# Konfiguracja wdrożenia aplikacji FastAPI na Render.com
+# FastAPI Application Deployment Configuration for Render.com
 
 services:
-  # Jedna usługa webowa dla backendu FastAPI + frontendu SvelteKit
+  # Single web service for FastAPI backend + SvelteKit frontend
   - type: web
-    name: pixel-pasta-ai-app # Nazwa usługi w Render
-    env: python # Użyj środowiska Python
-    region: frankfurt # Wybierz region najbliższy Tobie/Twoim użytkownikom
-    plan: free # Wybierz plan (darmowy ma ograniczenia)
+    name: pixel-pasta-ai-app # Service name in Render
+    env: python # Use Python environment
+    region: frankfurt # Choose the region closest to you/your users
+    plan: free # Choose a plan (free has limitations)
     buildCommand: |
-      # 1. Zainstaluj zależności backendu
+      # 1. Install backend dependencies
       pip install -r fastapi_app/requirements.txt
-      # 2. Zbuduj frontend (Render już ma zainstalowany Node.js)
+      # 2. Build frontend (Render already has Node.js installed)
       cd frontend && npm install && npm run build
-      # 3. Wyświetl informacje o strukturze katalogu dla debugowania
-      echo "Sprawdzanie struktury katalogów po budowaniu:"
+      # 3. Very detailed directory debugging
+      echo "==================== DIRECTORY STRUCTURE ===================="
+      pwd
+      echo "== Root directory content:"
+      ls -la
+      echo "== Frontend directory content:"
       ls -la frontend/
-      ls -la frontend/.svelte-kit/ || echo "Brak katalogu .svelte-kit"
-      ls -la frontend/build/ || echo "Brak katalogu build"
-      # 4. Utwórz katalog dla plików statycznych
+      echo "== Frontend/.svelte-kit directory content (if exists):"
+      ls -la frontend/.svelte-kit/ || echo "No frontend/.svelte-kit directory"
+      echo "== Frontend/.svelte-kit/output directory content (if exists):"
+      ls -la frontend/.svelte-kit/output/ || echo "No frontend/.svelte-kit/output directory"
+      echo "== Frontend/.svelte-kit/output/client directory content (if exists):"
+      ls -la frontend/.svelte-kit/output/client/ || echo "No frontend/.svelte-kit/output/client directory"
+      echo "== Checking for build directory in various locations:"
+      ls -la frontend/build/ || echo "No frontend/build directory"
+      ls -la build/ || echo "No build directory in root folder"
+      find frontend -name "build" -type d || echo "Did not find build directory anywhere"
+      find . -name "*.html" | grep -v node_modules || echo "Did not find HTML files"
+      
+      # 4. Create directory for static files
       mkdir -p fastapi_app/app/static/dist
-      # 5. Skopiuj zbudowane pliki frontendu do katalogu static backendu
-      # Użyjemy prawidłowej ścieżki do zbudowanych plików
-      cp -r frontend/.svelte-kit/output/client/* fastapi_app/app/static/dist/ || \
-      cp -r frontend/build/* fastapi_app/app/static/dist/ || \
-      echo "Nie udało się skopiować plików statycznych. Sprawdź logi powyżej."
-    # Komenda do uruchomienia aplikacji w trybie produkcyjnym
+      
+      # 5. Try to find and copy static files (multiple attempts)
+      echo "== Attempting to copy static files from several possible locations"
+      if [ -d "frontend/.svelte-kit/output/client/" ]; then
+        echo "Copying from frontend/.svelte-kit/output/client/"
+        cp -r frontend/.svelte-kit/output/client/* fastapi_app/app/static/dist/
+      elif [ -d "frontend/build/" ]; then
+        echo "Copying from frontend/build/"
+        cp -r frontend/build/* fastapi_app/app/static/dist/
+      elif [ -d "build/" ]; then
+        echo "Copying from build/ (root directory)"
+        cp -r build/* fastapi_app/app/static/dist/
+      else
+        echo "ERROR: Could not find any directory with static files"
+        echo "Check the directory logs above to identify the file location"
+        # Do not fail the build, allow subsequent commands to run
+      fi
+    # Command to run the application in production mode
     startCommand: cd fastapi_app && gunicorn -w 4 -k uvicorn.workers.UvicornWorker app.main:app --bind 0.0.0.0:$PORT
-    # Zmienne środowiskowe (klucz API należy ustawić w panelu Render)
+    # Environment variables (API key should be set in the Render dashboard)
     envVars:
-      - key: PYTHON_VERSION # Render wymaga pełnej wersji Pythona (major.minor.patch)
-        value: 3.11.5 # Podano pełną wersję z numerem poprawki
+      - key: PYTHON_VERSION # Render requires the full Python version (major.minor.patch)
+        value: 3.11.5 # Full version with patch number provided
       - key: OPENROUTER_API_KEY
-        sync: false # Nie synchronizuj z repozytorium, ustaw w panelu Render
-      # UWAGA: Tesseract OCR nie jest instalowany w tej konfiguracji.
-      # Funkcjonalność OCR dla obrazów/PDF nie będzie działać w produkcji bez modyfikacji.
+        sync: false # Do not sync from repository, set in Render dashboard
+      # NOTE: Tesseract OCR is not installed in this configuration.
+      # OCR functionality for images/PDFs will not work in production without modification.

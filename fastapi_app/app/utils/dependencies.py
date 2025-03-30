@@ -3,16 +3,16 @@ from fastapi import HTTPException, status
 from dotenv import load_dotenv
 import logging
 
-# Załaduj zmienne środowiskowe z pliku .env (głównie dla lokalnego rozwoju)
-# W produkcji zmienne będą ustawione bezpośrednio w środowisku Render
+# Load environment variables from .env file (mainly for local development)
+# In production, variables will be set directly in the Render environment
 load_dotenv()
 
-# Konfiguracja loggera
+# Logger configuration
 logger = logging.getLogger(__name__)
 
 def get_openrouter_api_key() -> str:
     """
-    Zależność FastAPI do pobierania klucza API OpenRouter ze zmiennych środowiskowych.
+    FastAPI dependency to retrieve the OpenRouter API key from environment variables.
     """
     api_key = os.getenv("OPENROUTER_API_KEY")
     if not api_key:
@@ -23,4 +23,4 @@ def get_openrouter_api_key() -> str:
         )
     return api_key
 
-# Można tu dodać inne zależności, np. do zarządzania sesją bazy danych, jeśli będzie potrzebna.
+# Other dependencies can be added here, e.g., for managing database sessions if needed.

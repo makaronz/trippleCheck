@@ -6,70 +6,70 @@ from dotenv import load_dotenv
 import os
 from pathlib import Path
 
-# Załaduj zmienne środowiskowe z pliku .env
+# Load environment variables from .env file
 load_dotenv()
 
-# Import routerów (po załadowaniu .env)
-from .routers import process, files # Dodano import files
+# Import routers (after loading .env)
+from .routers import process, files # Added files import
 
 app = FastAPI(
     title="Pixel Pasta AI Agent",
-    description="Przeprojektowana aplikacja AI z asynchronicznym potokiem i wieloma perspektywami.",
+    description="A redesigned AI application with an asynchronous pipeline and multiple perspectives.",
     version="1.0.0"
 )
 
-# Określ ścieżkę do katalogu ze statycznymi plikami (frontend assets)
+# Define the path to the static files directory (frontend assets)
 static_files_dir = Path(__file__).parent / "static" / "dist"
 api_app = FastAPI(title="API")
 
-# Dołączanie routerów do pod-aplikacji API
+# Include routers in the API sub-application
 api_app.include_router(process.router)
 api_app.include_router(files.router)
 
-# Dołącz pod-aplikację API pod prefiksem /api/v1
+# Mount the API sub-application under the /api/v1 prefix
 app.mount("/api/v1", api_app)
 
-# Dodaj obsługę plików statycznych, jeśli katalog istnieje
+# Add static file serving if the directory exists
 if static_files_dir.exists():
     app.mount("/", StaticFiles(directory=str(static_files_dir), html=True), name="static")
 
     @app.get("/", include_in_schema=False)
     async def serve_spa():
-        """Serwuj główny plik HTML aplikacji SvelteKit (Single Page Application)"""
+        """Serve the main HTML file of the SvelteKit application (Single Page Application)"""
         index_path = static_files_dir / "index.html"
         if index_path.exists():
             return FileResponse(index_path)
-        raise HTTPException(status_code=404, detail="Frontend nie jest dostępny")
+        raise HTTPException(status_code=404, detail="Frontend is not available")
 else:
-    # Fallback, gdy katalog statycznych plików nie istnieje
+    # Fallback when the static files directory does not exist
     @app.get("/", tags=["General"])
     async def read_root():
-        """Podstawowy endpoint sprawdzający działanie aplikacji."""
-        return {"message": "API działa poprawnie. Frontend nie jest dostępny."}
+        """Basic endpoint to check if the application is running."""
+        return {"message": "API is running correctly. Frontend is not available."}
 
-# Konfiguracja CORS
+# CORS Configuration
 
-# Parametry z origins konwertowane są na regex
+# Origins parameters are converted to regex
 origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "https://pixel-pasta-ai-app.onrender.com",
-    # Dodać inne produkcyjne domeny, jeśli potrzeba
+    # Add other production domains if needed
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins, # Pozwól na żądania z tych źródeł
+    allow_origins=origins, # Allow requests from these origins
     allow_credentials=True,
-    allow_methods=["*"], # Pozwól na wszystkie metody (GET, POST, etc.)
-    allow_headers=["*"], # Pozwól na wszystkie nagłówki
+    allow_methods=["*"], # Allow all methods (GET, POST, etc.)
+    allow_headers=["*"], # Allow all headers
 )
 
 if __name__ == "__main__":
-    # Ten blok zazwyczaj nie jest używany bezpośrednio,
-    # aplikację uruchamia się przez Uvicorn z linii komend:
+    # This block is usually not used directly,
+    # the application is run via Uvicorn from the command line:
     # uvicorn fastapi_app.app.main:app --reload --host 0.0.0.0 --port 8000
     import uvicorn
     port = int(os.getenv("PORT", 8000))

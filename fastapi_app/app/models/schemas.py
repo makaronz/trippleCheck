@@ -2,61 +2,61 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 
 class DocumentInput(BaseModel):
-    """Model dla pojedynczego dokumentu wejściowego."""
+    """Model for a single input document."""
     name: str
-    content: str # Przetworzona treść tekstowa
-    size: int # Rozmiar w bajtach
+    content: str # Processed text content
+    size: int # Size in bytes
 
 class ProcessQueryRequest(BaseModel):
-    """Model dla żądania do endpointu /process_query."""
-    query: str = Field(..., description="Zapytanie użytkownika.")
-    # Usunięto pole api_key, będzie pobierane ze zmiennych środowiskowych serwera
-    documents: Optional[List[DocumentInput]] = Field(None, description="Lista przetworzonych dokumentów jako kontekst.")
+    """Model for the /process_query endpoint request."""
+    query: str = Field(..., description="User's query.")
+    # Removed api_key field, it will be retrieved from server environment variables
+    documents: Optional[List[DocumentInput]] = Field(None, description="List of processed documents as context.")
 
 class AnalysisResult(BaseModel):
-    """Model dla wyniku kroku analizy."""
+    """Model for the analysis step result."""
     model: str
     prompt: str
-    result_json: Optional[Dict[str, Any]] = None # Sparsowany JSON
+    result_json: Optional[Dict[str, Any]] = None # Parsed JSON
     raw_response: str
     error: Optional[str] = None
 
 class PerspectiveResult(BaseModel):
-    """Model dla wyniku pojedynczej perspektywy."""
-    type: str # Np. "Informative", "Contrarian", "Complementary"
+    """Model for a single perspective result."""
+    type: str # E.g., "Informative", "Contrarian", "Complementary"
     model: str
     prompt: str
-    response: str # Odpowiedź w formacie Markdown
+    response: str # Response in Markdown format
     error: Optional[str] = None
 
 class VerificationSynthesisResult(BaseModel):
-    """Model dla wyniku kroku weryfikacji i syntezy."""
+    """Model for the verification and synthesis step result."""
     model: str
     prompt: str
-    verification_comparison_report: Optional[str] = None # Raport w Markdown
-    final_synthesized_answer: Optional[str] = None # Finalna odpowiedź w Markdown
+    verification_comparison_report: Optional[str] = None # Report in Markdown
+    final_synthesized_answer: Optional[str] = None # Final answer in Markdown
     raw_response: str
     error: Optional[str] = None
 
 class ProcessQueryResponse(BaseModel):
-    """Model dla odpowiedzi z endpointu /process_query."""
+    """Model for the /process_query endpoint response."""
     query: str
     timestamp: str
     analysis: AnalysisResult
     perspectives: List[PerspectiveResult]
     verification_synthesis: VerificationSynthesisResult
-    # Można dodać pole na metadane dokumentów, jeśli potrzebne
+    # Could add a field for document metadata if needed
 
 class FileProcessingRequest(BaseModel):
-    """Model dla żądania do endpointu /process_file."""
+    """Model for the /process_file endpoint request."""
     filename: str
     file_data_base64: str
 
 class FileProcessingResponse(BaseModel):
-    """Model dla odpowiedzi z endpointu /process_file."""
+    """Model for the /process_file endpoint response."""
     content: str
     error: Optional[str] = None
 
 class ErrorResponse(BaseModel):
-    """Model dla odpowiedzi błędu."""
+    """Model for an error response."""
     error: str

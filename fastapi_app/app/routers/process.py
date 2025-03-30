@@ -1,66 +1,66 @@
 from fastapi import APIRouter, HTTPException, Body, Depends
 import logging
-import httpx # Dodano import httpx
+import httpx # Added httpx import
 from typing import Dict, Any
 
 from ..models import schemas
 from ..services import pipeline_service
-from ..utils.dependencies import get_openrouter_api_key # Zależność do pobierania klucza API
+from ..utils.dependencies import get_openrouter_api_key # Dependency to get the API key
 
-# Konfiguracja loggera
+# Logger configuration
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
-    prefix="/api/v1", # Prefix dla wszystkich tras w tym routerze
-    tags=["AI Pipeline"], # Tag dla dokumentacji Swagger
+    prefix="/api/v1", # Prefix for all routes in this router
+    tags=["AI Pipeline"], # Tag for Swagger documentation
 )
 
 @router.post(
     "/process_query",
-    response_model=schemas.ProcessQueryResponse, # Model odpowiedzi Pydantic
-    summary="Przetwarza zapytanie użytkownika przez potok AI",
-    description="Przyjmuje zapytanie i opcjonalne dokumenty, przeprowadza analizę, generuje 3 perspektywy (równolegle), weryfikuje je i syntetyzuje finalną odpowiedź.",
+    response_model=schemas.ProcessQueryResponse, # Pydantic response model
+    summary="Processes a user query through the AI pipeline",
+    description="Accepts a query and optional documents, performs analysis, generates 3 perspectives (in parallel), verifies them, and synthesizes a final answer.",
     responses={
-        400: {"model": schemas.ErrorResponse, "description": "Błąd w danych wejściowych"},
-        500: {"model": schemas.ErrorResponse, "description": "Wewnętrzny błąd serwera"}
+        400: {"model": schemas.ErrorResponse, "description": "Input data error"},
+        500: {"model": schemas.ErrorResponse, "description": "Internal server error"}
     }
 )
 async def process_query_endpoint(
-    request_body: schemas.ProcessQueryRequest = Body(...), # Pobierz ciało żądania i zwaliduj
-    api_key: str = Depends(get_openrouter_api_key) # Użyj zależności do pobrania klucza API ze zmiennej środowiskowej
+    request_body: schemas.ProcessQueryRequest = Body(...), # Get the request body and validate
+    api_key: str = Depends(get_openrouter_api_key) # Use dependency to get API key from environment variable
 ):
     """
-    Endpoint do przetwarzania zapytania przez przeprojektowany potok AI.
+    Endpoint for processing a query through the redesigned AI pipeline.
     """
-    logger.info(f"Otrzymano żądanie /process_query dla zapytania: {request_body.query[:50]}...")
+    logger.info(f"Received /process_query request for query: {request_body.query[:50]}...")
 
-    # Usunięto sprawdzanie klucza API z ciała żądania
+    # Removed API key check from the request body
 
     try:
-        # Uruchomienie potoku AI z serwisu, przekazując klucz API jako argument
+        # Run the AI pipeline from the service, passing the API key as an argument
         result = await pipeline_service.run_ai_pipeline(request_body, api_key)
-        logger.info("Pomyślnie zakończono przetwarzanie zapytania.")
+        logger.info("Successfully finished processing the query.")
         return result
 
     except ValueError as ve:
-        logger.error(f"Błąd walidacji danych: {ve}", exc_info=True)
+        logger.error(f"Data validation error: {ve}", exc_info=True)
         raise HTTPException(status_code=400, detail=str(ve))
-    except httpx.HTTPStatusError as http_err: # Błąd z API OpenRouter
-         logger.error(f"Błąd HTTP podczas komunikacji z OpenRouter: {http_err}", exc_info=True)
-         # Zwróć bardziej szczegółowy błąd, jeśli to możliwe
-         error_detail = f"Błąd komunikacji z modelem AI ({http_err.response.status_code})."
+    except httpx.HTTPStatusError as http_err: # Error from OpenRouter API
+         logger.error(f"HTTP error during communication with OpenRouter: {http_err}", exc_info=True)
+         # Return a more detailed error if possible
+         error_detail = f"Error communicating with the AI model ({http_err.response.status_code})."
          try:
-              # Spróbuj odczytać treść błędu z odpowiedzi API
+              # Try to read the error content from the API response
               api_error = http_err.response.json()
-              error_detail += f" Szczegóły: {api_error.get('error', {}).get('message', http_err.response.text)}"
+              error_detail += f" Details: {api_error.get('error', {}).get('message', http_err.response.text)}"
          except Exception:
-              error_detail += f" Szczegóły: {http_err.response.text}"
+              error_detail += f" Details: {http_err.response.text}"
          raise HTTPException(status_code=502, detail=error_detail) # 502 Bad Gateway
     except Exception as e:
-        logger.critical(f"Nieoczekiwany krytyczny błąd serwera podczas przetwarzania zapytania: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Wystąpił wewnętrzny błąd serwera: {e}")
+        logger.critical(f"Unexpected critical server error during query processing: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"An internal server error occurred: {e}")
 
-# Można dodać tutaj endpoint /process_file, jeśli przenosimy tę logikę
+# The /process_file endpoint could be added here if we move the logic
 # @router.post("/process_file", ...)
 # async def process_file_endpoint(...): ...
