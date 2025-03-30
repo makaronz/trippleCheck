@@ -50,7 +50,7 @@ async def call_openrouter_api_async(
         "Content-Type": "application/json",
         "Authorization": f"Bearer {api_key}",
         "HTTP-Referer": os.getenv("APP_URL", "http://localhost:8000"), # Get from .env or use default
-        "X-Title": os.getenv("APP_TITLE", "AI Agent - FastAPI")      # Get from .env or use default
+        "X-Title": os.getenv("APP_TITLE", "trippleCheck")      # Get from .env or use default
     }
     # Use the standard OpenAI API message format
     data = {"model": model, "messages": [{"role": "user", "content": prompt_content}]}

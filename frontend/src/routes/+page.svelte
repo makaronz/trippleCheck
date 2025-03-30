@@ -192,7 +192,7 @@
 </script>
 
 <svelte:head>
-  <title>Pixel Pasta AI Agent</title>
+  <title>trippleCheck</title>
   <!-- Pixel Font -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""> <!-- Fixed: added empty quotes -->
@@ -201,7 +201,7 @@
 
 <div class="pixel-background">
   <header class="header-banner">
-      <h1 class="pixel-title">PIXEL PASTA AI AGENT</h1>
+      <h1 class="pixel-title">trippleCheck</h1>
   </header>
 
   <main class="container">

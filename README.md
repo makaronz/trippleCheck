@@ -1,4 +1,4 @@
-# AI Agent - Pixel Pasta (trippleCheck) - FastAPI & SvelteKit Edition
+# trippleCheck - AI Agent (FastAPI & SvelteKit Edition)
 
 A web application featuring a FastAPI backend and a SvelteKit frontend. It utilizes an AI pipeline (analysis, perspective generation, verification, synthesis) to answer user queries, with the option to add text or image files as context.
 

@@ -3,7 +3,7 @@
 services:
   # Single web service for FastAPI backend + SvelteKit frontend
   - type: web
-    name: pixel-pasta-ai-app # Service name in Render
+    name: trippleCheck # Service name in Render
     env: python # Use Python environment
     region: frankfurt # Choose the region closest to you/your users
     plan: free # Choose a plan (free has limitations)

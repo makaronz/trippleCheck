@@ -13,8 +13,8 @@ load_dotenv()
 from .routers import process, files # Added files import
 
 app = FastAPI(
-    title="Pixel Pasta AI Agent",
-    description="A redesigned AI application with an asynchronous pipeline and multiple perspectives.",
+    title="trippleCheck",
+    description="A multi-perspective AI agent application with an asynchronous pipeline.",
     version="1.0.0"
 )
 
