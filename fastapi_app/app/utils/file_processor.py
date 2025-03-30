@@ -6,7 +6,7 @@ import traceback
 import io
 import logging
 
-# Zależności do przetwarzania plików
+# File processing dependencies
 try:
     import fitz  # type: ignore # PyMuPDF
 except ImportError:
@@ -14,257 +14,286 @@ except ImportError:
 
 try:
     import ocrmypdf # type: ignore
-    # Sprawdzenie, czy Tesseract jest dostępny dla ocrmypdf
-    # ocrmypdf.check() # Może rzucić wyjątek, jeśli Tesseracta brakuje
+    # Check if Tesseract is available for ocrmypdf
+    # ocrmypdf.check() # Can raise exception if Tesseract is missing
 except ImportError:
     ocrmypdf = None
 except Exception as ocr_check_e:
-     logging.warning(f"ocrmypdf jest zainstalowany, ale wystąpił problem ze sprawdzeniem zależności (np. Tesseract): {ocr_check_e}")
-     ocrmypdf = None # Traktuj jako niedostępny, jeśli zależności systemowe nie są spełnione
+     logging.warning(f"ocrmypdf is installed, but there was a problem checking dependencies (e.g., Tesseract): {ocr_check_e}")
+     ocrmypdf = None # Treat as unavailable if system dependencies are not met
 
 try:
     from PIL import Image
     import pytesseract
 except ImportError:
     Image = None
-    pytesseract = None # Obsłuż brak bibliotek
+    pytesseract = None # Handle missing libraries
 
 try:
     import markdown
     from bs4 import BeautifulSoup
 except ImportError:
     markdown = None
-    BeautifulSoup = None # Obsłuż brak bibliotek
+    BeautifulSoup = None # Handle missing libraries
 
-# Konfiguracja loggera
+# Logger configuration
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Stałe (można przenieść do konfiguracji)
-MAX_DOCUMENT_CHARS = 4000 # Maksymalna liczba znaków zwracana z pliku
-MAX_PDF_SIZE_MB = 10  # Maksymalny rozmiar pliku PDF w MB
+# Constants (could be moved to config)
+MAX_DOCUMENT_CHARS = 4000 # Max characters returned from a file
+MAX_PDF_SIZE_MB = 10  # Max PDF file size in MB
+MAX_IMAGE_SIZE_MB = 10 # Max Image file size in MB
+MAX_BASE64_SIZE_MB = 15 # Max size for base64 encoded data (~11MB binary)
 
-# --- Funkcje Przetwarzania Plików ---
+# --- File Processing Functions ---
 
 def _run_ocr_on_pdf(input_pdf_path: str, output_pdf_path: str) -> bool:
-    """Uruchamia OCR na pliku PDF za pomocą ocrmypdf."""
+    """Runs OCR on a PDF file using ocrmypdf."""
     if not ocrmypdf:
-        logger.warning("Biblioteka ocrmypdf nie jest dostępna. Pomijanie OCR dla PDF.")
+        logger.warning("ocrmypdf library is not available. Skipping OCR for PDF.")
         return False
     try:
-        logger.info(f"Uruchamianie OCR na pliku PDF: {input_pdf_path}")
-        # Używamy języków angielskiego i polskiego, wymuszamy OCR
+        logger.info(f"Running OCR on PDF file: {input_pdf_path}")
+        # Use English and Polish languages, force OCR
         result = ocrmypdf.ocr(input_pdf_path, output_pdf_path, language='eng+pol', force_ocr=True, progress_bar=False)
-        if result == 0: # ocrmypdf zwraca 0 przy sukcesie
-             logger.info(f"OCR zakończony pomyślnie dla: {input_pdf_path}")
+        if result == 0: # ocrmypdf returns 0 on success
+             logger.info(f"OCR completed successfully for: {input_pdf_path}")
              return True
         else:
-             logger.error(f"ocrmypdf zakończył działanie z kodem błędu {result} dla pliku {input_pdf_path}")
+             logger.error(f"ocrmypdf finished with error code {result} for file {input_pdf_path}")
              return False
     except ocrmypdf.exceptions.TesseractNotFoundError:
-         logger.error("Tesseract OCR nie znaleziony przez ocrmypdf. Upewnij się, że jest zainstalowany i w PATH.")
-         raise RuntimeError("Tesseract OCR nie znaleziony przez ocrmypdf.")
+         logger.error("Tesseract OCR not found by ocrmypdf.")
+         # Change to ValueError to return 400 instead of 500 when OCR is unavailable
+         raise ValueError("OCR engine (Tesseract) not found for PDF processing.")
     except Exception as ocr_e:
-        logger.error(f"Błąd podczas wykonywania OCR na PDF {input_pdf_path}: {ocr_e}", exc_info=True)
-        return False # Zwróć False, aby spróbować ekstrakcji bez OCR
+        logger.error(f"Error during OCR on PDF {input_pdf_path}: {ocr_e}", exc_info=True)
+        return False # Return False to attempt extraction without OCR
 
 def safe_extract_text_from_pdf(pdf_data: bytes) -> str:
-    """Bezpieczna ekstrakcja tekstu z pliku PDF używając PyMuPDF, z fallbackiem do OCR."""
+    """Safely extracts text from PDF data using PyMuPDF, with OCR fallback."""
     if not fitz:
-        raise RuntimeError("Biblioteka PyMuPDF (fitz) nie jest zainstalowana. Uruchom 'pip install PyMuPDF'.")
+        # fitz is a core dependency, so RuntimeError is appropriate here
+        raise RuntimeError("Required library PyMuPDF (fitz) is not installed.")
 
     text = ""
     temp_input_path = None
     temp_output_path = None
 
     try:
-        # Sprawdź rozmiar pliku
+        # Check file size
         file_size_mb = len(pdf_data) / (1024 * 1024)
         if file_size_mb > MAX_PDF_SIZE_MB:
-            raise ValueError(f"Plik PDF jest zbyt duży. Maksymalny rozmiar to {MAX_PDF_SIZE_MB} MB.")
+            raise ValueError(f"PDF file is too large. Maximum size is {MAX_PDF_SIZE_MB} MB.")
 
-        # 1. Spróbuj ekstrakcji tekstu za pomocą PyMuPDF
+        # 1. Try text extraction using PyMuPDF
         try:
             with fitz.open(stream=pdf_data, filetype="pdf") as doc:
                 for page_num in range(len(doc)):
                     page = doc.load_page(page_num)
-                    page_text = page.get_text("text") # Ekstrahuj czysty tekst
+                    page_text = page.get_text("text") # Extract plain text
                     if page_text:
                         text += page_text + "\n\n"
-            logger.info(f"PyMuPDF: Wyekstrahowano {len(text)} znaków tekstu.")
+            logger.info(f"PyMuPDF: Extracted {len(text)} characters of text.")
         except Exception as fitz_e:
-             logger.warning(f"Błąd podczas ekstrakcji tekstu przez PyMuPDF: {fitz_e}. Próba OCR...")
-             text = "" # Zresetuj tekst, jeśli PyMuPDF zawiódł
+             logger.warning(f"Error during text extraction by PyMuPDF: {fitz_e}. Attempting OCR...")
+             text = "" # Reset text if PyMuPDF failed
 
-        # 2. Jeśli tekst jest pusty lub niewystarczający, spróbuj OCR z ocrmypdf
-        if not text.strip() and ocrmypdf:
-            logger.warning("Tekst z PyMuPDF jest pusty/niewystarczający. Próba OCR z ocrmypdf...")
-            try:
-                # Zapisz dane do tymczasowego pliku wejściowego
-                with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as temp_in:
-                    temp_in.write(pdf_data)
-                    temp_input_path = temp_in.name
-
-                # Utwórz ścieżkę dla tymczasowego pliku wyjściowego
-                temp_output_fd, temp_output_path = tempfile.mkstemp(suffix=".pdf")
-                os.close(temp_output_fd) # Zamknij deskryptor pliku
-
-                # Uruchom OCR
-                ocr_success = _run_ocr_on_pdf(temp_input_path, temp_output_path)
-
-                if ocr_success and os.path.exists(temp_output_path):
-                    # Odczytaj tekst z pliku przetworzonego przez OCR za pomocą PyMuPDF
-                    text = "" # Zresetuj tekst
-                    with fitz.open(temp_output_path) as doc_ocr:
-                        for page_num in range(len(doc_ocr)):
-                            page = doc_ocr.load_page(page_num)
-                            page_text = page.get_text("text")
-                            if page_text:
-                                text += page_text + "\n\n"
-                    logger.info(f"OCR: Wyekstrahowano {len(text)} znaków tekstu po OCR.")
-                else:
-                     logger.error(f"OCR nie powiodło się lub plik wyjściowy nie istnieje: {temp_output_path}")
-                     # Jeśli OCR zawiedzie, nadal możemy zwrócić pusty tekst lub rzucić błąd
-                     # Na razie zwrócimy pusty tekst
-                     text = ""
-
-            except Exception as ocr_pipeline_e:
-                 logger.error(f"Błąd w potoku OCR dla PDF: {ocr_pipeline_e}", exc_info=True)
-                 text = "" # Zwróć pusty tekst w razie błędu OCR
-            finally:
-                 # Posprzątaj pliki tymczasowe
-                 if temp_input_path and os.path.exists(temp_input_path):
-                     try: os.unlink(temp_input_path)
-                     except OSError: logger.warning(f"Nie udało się usunąć pliku tymczasowego: {temp_input_path}")
-                 if temp_output_path and os.path.exists(temp_output_path):
-                     try: os.unlink(temp_output_path)
-                     except OSError: logger.warning(f"Nie udało się usunąć pliku tymczasowego: {temp_output_path}")
-
-        # Ostateczne sprawdzenie, czy mamy jakiś tekst
+        # 2. If text is empty or insufficient, try OCR
         if not text.strip():
-            logger.warning("Nie udało się wyekstrahować tekstu z PDF ani za pomocą PyMuPDF, ani OCR.")
-            # Można rzucić błąd, jeśli brak tekstu jest niedopuszczalny
-            # raise ValueError("Nie udało się wyekstrahować tekstu z pliku PDF.")
+            if ocrmypdf:
+                logger.warning("Text extracted by PyMuPDF is empty/insufficient. Attempting OCR with ocrmypdf...")
+                try:
+                    # Write data to temporary input file
+                    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as temp_in:
+                        temp_in.write(pdf_data)
+                        temp_input_path = temp_in.name
+
+                    # Create path for temporary output file
+                    temp_output_fd, temp_output_path = tempfile.mkstemp(suffix=".pdf")
+                    os.close(temp_output_fd) # Close file descriptor
+
+                    # Run OCR
+                    ocr_success = _run_ocr_on_pdf(temp_input_path, temp_output_path)
+
+                    if ocr_success and os.path.exists(temp_output_path):
+                        # Read text from the OCR-processed file using PyMuPDF
+                        text = "" # Reset text
+                        with fitz.open(temp_output_path) as doc_ocr:
+                            for page_num in range(len(doc_ocr)):
+                                page = doc_ocr.load_page(page_num)
+                                page_text = page.get_text("text")
+                                if page_text:
+                                    text += page_text + "\n\n"
+                        logger.info(f"OCR: Extracted {len(text)} characters after OCR.")
+                    else:
+                         logger.error(f"OCR failed or output file does not exist: {temp_output_path}")
+                         # If OCR fails, still return empty text but log the error
+                         text = ""
+
+                except Exception as ocr_pipeline_e:
+                     logger.error(f"Error in OCR pipeline for PDF: {ocr_pipeline_e}", exc_info=True)
+                     # If OCR fails, still return empty text but log the error
+                     text = ""
+                finally:
+                     # Clean up temporary files
+                     if temp_input_path and os.path.exists(temp_input_path):
+                         try: os.unlink(temp_input_path)
+                         except OSError: logger.warning(f"Could not delete temporary file: {temp_input_path}")
+                     if temp_output_path and os.path.exists(temp_output_path):
+                         try: os.unlink(temp_output_path)
+                         except OSError: logger.warning(f"Could not delete temporary file: {temp_output_path}")
+            else: # if ocrmypdf is not available
+                 # If ocrmypdf is not available and text is empty, raise an error
+                 logger.warning("Text extracted by PyMuPDF is empty, and ocrmypdf is not available for OCR fallback.")
+                 raise ValueError("Could not extract text from PDF. OCR library (ocrmypdf) is not available.")
+
+        # Final check if we have any text (after attempting OCR or if OCR wasn't needed/available)
+        if not text.strip():
+             logger.warning("Failed to extract meaningful text from PDF using PyMuPDF and OCR (if attempted).")
+             # Return empty string if nothing found. Error is raised above if OCR was needed but unavailable.
 
         return text.strip()
 
-    except Exception as e:
-        logger.error(f"Nieoczekiwany błąd podczas przetwarzania PDF: {e}", exc_info=True)
-        raise ValueError(f"Błąd podczas przetwarzania pliku PDF: {e}") from e
+    except (ValueError, RuntimeError) as e: # Catch specific errors first
+        logger.error(f"Error processing PDF: {e}", exc_info=True)
+        # Re-raise as ValueError for the router to handle as 400 or 500 depending on the original type
+        raise ValueError(f"Error processing PDF file: {e}") from e
+    except Exception as e: # Catch any other unexpected errors
+        logger.error(f"Unexpected error processing PDF: {e}", exc_info=True)
+        raise RuntimeError(f"Unexpected server error processing PDF: {e}") from e
+
 
 def safe_extract_text_from_image(image_data: bytes) -> str:
-    """Bezpieczna ekstrakcja tekstu z obrazu (OCR). Rzuca wyjątek."""
+    """Safely extracts text from image data using OCR. Raises ValueError on OCR/dependency errors."""
     if not Image or not pytesseract:
-        raise RuntimeError("Biblioteki Pillow i/lub pytesseract nie są zainstalowane. Uruchom 'pip install Pillow pytesseract'.")
+        # Change to ValueError
+        raise ValueError("Image processing libraries (Pillow, pytesseract) are not installed.")
 
     text = ""
-    suffix = '.png' # Domyślny
+    suffix = '.png' # Default
     temp_path = None
 
     try:
-        # Sprawdź format obrazu, aby użyć poprawnego rozszerzenia dla pliku tymczasowego
+        # Check image format to use correct extension for temporary file
         try:
             img_check = Image.open(io.BytesIO(image_data))
             if img_check.format:
                 suffix = f'.{img_check.format.lower()}'
         except Exception:
-            logger.warning("Nie udało się określić formatu obrazu, używam domyślnego .png")
+            logger.warning("Could not determine image format, using default .png")
 
-        # Zapisz dane do pliku tymczasowego
+        # Write data to temporary file
         with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as temp_file:
             temp_file.write(image_data)
             temp_path = temp_file.name
 
-        # Wykonaj OCR
+        # Perform OCR
         image = Image.open(temp_path)
-        # Upewnij się, że ścieżka do Tesseract jest ustawiona (można to zrobić globalnie)
+        # Ensure Tesseract path is set (can be done globally)
         # if os.getenv('TESSERACT_CMD'): pytesseract.pytesseract.tesseract_cmd = os.getenv('TESSERACT_CMD')
-        text = pytesseract.image_to_string(image, lang='eng+pol') # Dodano polski
-        logger.info(f"Pomyślnie wykonano OCR dla obrazu (rozmiar: {len(image_data)} B).")
+        text = pytesseract.image_to_string(image, lang='eng+pol') # Added Polish
+        logger.info(f"Successfully performed OCR for image (size: {len(image_data)} B).")
 
     except pytesseract.TesseractNotFoundError:
-         logger.error("Tesseract OCR nie jest zainstalowany lub nie znajduje się w ścieżce systemowej (PATH).")
-         raise RuntimeError("Tesseract OCR nie jest zainstalowany lub nie znajduje się w ścieżce systemowej (PATH).")
+         logger.error("Tesseract OCR is not installed or not found in PATH.")
+         # Change to ValueError
+         raise ValueError("OCR engine (Tesseract) is not available for image processing.")
     except Exception as e:
-        logger.error(f"Błąd podczas przetwarzania obrazu przez OCR: {e}", exc_info=True)
-        raise ValueError(f"Błąd podczas przetwarzania obrazu przez OCR: {e}") from e
+        logger.error(f"Error during image OCR processing: {e}", exc_info=True)
+        # Raise as ValueError for consistency
+        raise ValueError(f"Error during image OCR processing: {e}") from e
     finally:
-        # Usuń plik tymczasowy
+        # Delete temporary file
         if temp_path and os.path.exists(temp_path):
             try:
                 os.unlink(temp_path)
             except OSError as unlink_e:
-                logger.warning(f"Nie udało się usunąć pliku tymczasowego OCR: {temp_path}. Błąd: {unlink_e}")
+                logger.warning(f"Could not delete temporary OCR file: {temp_path}. Error: {unlink_e}")
     return text
 
 def safe_extract_text_from_markdown(md_data: bytes) -> str:
-    """Konwertuje Markdown na czysty tekst. Rzuca wyjątek."""
+    """Converts Markdown to plain text. Raises ValueError on errors."""
     if not markdown or not BeautifulSoup:
-         raise RuntimeError("Biblioteki Markdown i/lub beautifulsoup4 nie są zainstalowane.")
+         # Change to ValueError
+         raise ValueError("Markdown processing libraries (Markdown, beautifulsoup4) are not installed.")
     try:
-        md_text = md_data.decode('utf-8') # Zakładamy UTF-8 dla Markdown
+        md_text = md_data.decode('utf-8') # Assume UTF-8 for Markdown
         html = markdown.markdown(md_text)
-        # Użyj html.parser jako parsera, jest wbudowany
+        # Use html.parser as the parser, it's built-in
         soup = BeautifulSoup(html, 'html.parser')
         text = soup.get_text(separator='\n', strip=True)
         return text
     except Exception as e:
-        logger.error(f"Błąd przetwarzania pliku Markdown: {e}", exc_info=True)
-        raise ValueError(f"Błąd podczas przetwarzania pliku Markdown: {e}") from e
+        logger.error(f"Error processing Markdown file: {e}", exc_info=True)
+        raise ValueError(f"Error processing Markdown file: {e}") from e
 
 def safe_extract_text_from_txt(txt_data: bytes) -> str:
-    """Bezpieczne odczytanie tekstu z danych TXT. Rzuca wyjątek."""
-    encodings_to_try = ['utf-8', 'latin-1', 'cp1250', 'cp1252'] # Lista kodowań do sprawdzenia
+    """Safely reads text from TXT data. Raises ValueError on errors."""
+    encodings_to_try = ['utf-8', 'latin-1', 'cp1250', 'cp1252'] # List of encodings to try
     for encoding in encodings_to_try:
         try:
             return txt_data.decode(encoding)
         except UnicodeDecodeError:
-            continue # Spróbuj następnego kodowania
+            continue # Try next encoding
         except Exception as e:
-             logger.error(f"Nieoczekiwany błąd podczas dekodowania TXT jako {encoding}: {e}", exc_info=True)
-             raise ValueError(f"Błąd podczas odczytu pliku tekstowego: {e}") from e # Rzuć błąd, jeśli nie jest to UnicodeDecodeError
+             logger.error(f"Unexpected error decoding TXT as {encoding}: {e}", exc_info=True)
+             raise ValueError(f"Error reading text file: {e}") from e # Raise error if not UnicodeDecodeError
 
-    # Jeśli żadne kodowanie nie zadziałało
-    logger.error("Nie udało się zdekodować pliku tekstowego przy użyciu standardowych kodowań.")
-    raise ValueError(f"Nie udało się zdekodować pliku tekstowego (próbowano: {', '.join(encodings_to_try)}).")
+    # If no encoding worked
+    logger.error("Could not decode text file using standard encodings.")
+    raise ValueError(f"Could not decode text file (tried: {', '.join(encodings_to_try)}).")
 
 
 def process_uploaded_file_data(filename: str, file_data_base64: str) -> str:
     """
-    Przetwarza przesłany plik (zakodowany w base64) na podstawie jego typu.
-    Zwraca wyekstrahowany tekst lub rzuca wyjątek.
+    Processes an uploaded file (base64 encoded) based on its type.
+    Returns the extracted text or raises ValueError/RuntimeError on failure.
     """
     try:
+        # Add size validation before decoding base64
+        # Estimated base64 overhead is ~33%, so limit corresponds to ~11MB binary data
+        max_base64_bytes = MAX_BASE64_SIZE_MB * 1024 * 1024
+        if len(file_data_base64.encode('utf-8')) > max_base64_bytes: # Check bytes length
+             raise ValueError(f"Encoded file data is too large (>{MAX_BASE64_SIZE_MB}MB).")
+
         file_data = base64.b64decode(file_data_base64)
         filename_lower = filename.lower()
-        logger.info(f"Przetwarzanie pliku: {filename} (rozmiar: {len(file_data)} B)")
+        logger.info(f"Processing file: {filename} (decoded size: {len(file_data)} B)")
+
+        # Add size validation for decoded image data
+        max_image_bytes = MAX_IMAGE_SIZE_MB * 1024 * 1024
+        if filename_lower.endswith(('.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff')):
+             if len(file_data) > max_image_bytes:
+                  raise ValueError(f"Image file is too large (>{MAX_IMAGE_SIZE_MB}MB).")
 
         content = ""
         if filename_lower.endswith('.pdf'):
             content = safe_extract_text_from_pdf(file_data)
-        elif filename_lower.endswith(('.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff')): # Rozszerzono listę obrazów
+        elif filename_lower.endswith(('.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff')): # Expanded image list
             content = safe_extract_text_from_image(file_data)
         elif filename_lower.endswith('.md'):
             content = safe_extract_text_from_markdown(file_data)
         elif filename_lower.endswith('.txt'):
             content = safe_extract_text_from_txt(file_data)
-        # Można dodać obsługę innych typów, np. .html, .docx, .pptx (wymaga dodatkowych bibliotek)
+        # Can add support for other types, e.g., .html, .docx, .pptx (requires additional libraries)
         else:
-            logger.warning(f"Nieobsługiwany typ pliku: {filename}")
-            raise ValueError(f"Nieobsługiwany typ pliku: {os.path.splitext(filename)[1]}")
+            logger.warning(f"Unsupported file type: {filename}")
+            raise ValueError(f"Unsupported file type: {os.path.splitext(filename)[1]}")
 
-        # Ogranicz długość zwracanego contentu
+        # Truncate the extracted content if it exceeds the limit
         if len(content) > MAX_DOCUMENT_CHARS:
-             logger.info(f"Skrócono zawartość pliku {filename} do {MAX_DOCUMENT_CHARS} znaków.")
-             return content[:MAX_DOCUMENT_CHARS] + "... (skrócono)"
+             logger.info(f"Truncated content of file {filename} to {MAX_DOCUMENT_CHARS} characters.")
+             return content[:MAX_DOCUMENT_CHARS] + "... (truncated)"
         else:
              return content
 
-    except (ValueError, RuntimeError) as e:
-        logger.error(f"Błąd przetwarzania pliku {filename}: {e}")
-        # Rzucamy wyjątek dalej, aby obsłużyć go w routerze
+    except (ValueError, RuntimeError) as e: # Catch specific errors first
+        logger.error(f"Error processing file {filename}: {e}")
+        # Re-raise specific ValueErrors or RuntimeErrors to be handled by the router
         raise e
-    except Exception as e:
-        logger.error(f"Nieoczekiwany błąd w process_uploaded_file_data dla {filename}: {e}", exc_info=True)
-        # Rzucamy ogólny błąd
-        raise RuntimeError("Wystąpił nieoczekiwany błąd serwera podczas przetwarzania pliku.") from e
+    except Exception as e: # Catch any other unexpected errors
+        logger.error(f"Unexpected error in process_uploaded_file_data for {filename}: {e}", exc_info=True)
+        # Raise a generic RuntimeError for unexpected issues
+        raise RuntimeError("An unexpected server error occurred while processing the file.") from e

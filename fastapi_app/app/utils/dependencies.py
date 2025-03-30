@@ -1,15 +1,26 @@
-from fastapi import Header, HTTPException, status
-from typing import Optional
+import os
+from fastapi import HTTPException, status
+from dotenv import load_dotenv
+import logging
 
-async def get_openrouter_api_key(x_api_key: Optional[str] = Header(None, alias="X-API-Key")) -> str:
+# Załaduj zmienne środowiskowe z pliku .env (głównie dla lokalnego rozwoju)
+# W produkcji zmienne będą ustawione bezpośrednio w środowisku Render
+load_dotenv()
+
+# Konfiguracja loggera
+logger = logging.getLogger(__name__)
+
+def get_openrouter_api_key() -> str:
     """
-    Zależność FastAPI do pobierania klucza API OpenRouter z nagłówka X-API-Key.
+    Zależność FastAPI do pobierania klucza API OpenRouter ze zmiennych środowiskowych.
     """
-    if not x_api_key:
+    api_key = os.getenv("OPENROUTER_API_KEY")
+    if not api_key:
+        logger.error("Missing OPENROUTER_API_KEY environment variable.")
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Nagłówek X-API-Key z kluczem OpenRouter jest wymagany."
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Server configuration error: Missing OpenRouter API key."
         )
-    return x_api_key
+    return api_key
 
-# Można dodać inne zależności, np. do zarządzania sesją bazy danych, itp.
+# Można tu dodać inne zależności, np. do zarządzania sesją bazy danych, jeśli będzie potrzebna.

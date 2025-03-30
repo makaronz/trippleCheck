@@ -24,18 +24,27 @@ services:
           name: pixel-pasta-ai-backend
           property: url
       # UWAGA: Tesseract OCR nie jest instalowany w tej konfiguracji.
-      # Jeśli potrzebujesz OCR PDF, rozważ użycie Dockerfile:
-      # https://render.com/docs/docker
+      # Funkcjonalność OCR dla obrazów/PDF nie będzie działać w produkcji bez modyfikacji.
+      # Rozważ użycie Dockerfile: https://render.com/docs/docker
 
-# Opcjonalnie: Konfiguracja dla frontendu SvelteKit (jako osobna usługa Static Site)
-# - type: static
-#   name: pixel-pasta-ai-frontend
-#   env: node # Użyj środowiska Node.js do budowania
-#   region: frankfurt
-#   plan: free
-#   buildCommand: cd frontend && npm install && npm run build
-#   staticPublishPath: frontend/build # Ścieżka do zbudowanych plików statycznych SvelteKit (adapter-static)
-#   routes:
-#     - type: rewrite # Przekieruj wszystkie ścieżki do index.html dla SPA
-#       source: /*
-#       destination: /index.html
+  # Definicja usługi statycznej dla frontendu SvelteKit
+  - type: static
+    name: pixel-pasta-ai-frontend
+    env: node # Użyj środowiska Node.js do budowania
+    region: frankfurt # Użyj tego samego regionu co backend
+    plan: free
+    buildCommand: cd frontend && npm install && npm run build # Komendy budowania frontendu
+    staticPublishPath: frontend/build # Ścieżka do zbudowanych plików statycznych (zakładając adapter-static)
+    # Definicja zmiennej środowiskowej dla frontendu, aby znał adres backendu
+    envVars:
+      - key: VITE_FASTAPI_URL # Nazwa zmiennej używana przez Vite/SvelteKit
+        fromService: # Pobierz URL z usługi backendu
+          type: web
+          name: pixel-pasta-ai-backend # Nazwa usługi backendu
+          property: url
+          # UWAGA: Render wstrzykuje zmienne środowiskowe *podczas budowania*.
+          # Upewnij się, że kod SvelteKit odczytuje tę zmienną poprawnie (np. przez import.meta.env.VITE_FASTAPI_URL).
+    routes:
+      - type: rewrite # Przekieruj wszystkie ścieżki do index.html dla routingu SPA
+        source: /*
+        destination: /index.html

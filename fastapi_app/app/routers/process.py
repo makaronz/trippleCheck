@@ -27,21 +27,19 @@ router = APIRouter(
     }
 )
 async def process_query_endpoint(
-    request_body: schemas.ProcessQueryRequest = Body(...) # Pobierz ciało żądania i zwaliduj
-    # api_key: str = Depends(get_openrouter_api_key) # Alternatywnie, klucz można przekazać w nagłówku i użyć zależności
+    request_body: schemas.ProcessQueryRequest = Body(...), # Pobierz ciało żądania i zwaliduj
+    api_key: str = Depends(get_openrouter_api_key) # Użyj zależności do pobrania klucza API ze zmiennej środowiskowej
 ):
     """
     Endpoint do przetwarzania zapytania przez przeprojektowany potok AI.
     """
     logger.info(f"Otrzymano żądanie /process_query dla zapytania: {request_body.query[:50]}...")
 
-    # Sprawdzenie klucza API (już walidowane przez Pydantic, ale dodatkowe sprawdzenie)
-    if not request_body.api_key:
-         raise HTTPException(status_code=400, detail="Klucz API OpenRouter jest wymagany.")
+    # Usunięto sprawdzanie klucza API z ciała żądania
 
     try:
-        # Uruchomienie potoku AI z serwisu
-        result = await pipeline_service.run_ai_pipeline(request_body)
+        # Uruchomienie potoku AI z serwisu, przekazując klucz API jako argument
+        result = await pipeline_service.run_ai_pipeline(request_body, api_key)
         logger.info("Pomyślnie zakończono przetwarzanie zapytania.")
         return result
 

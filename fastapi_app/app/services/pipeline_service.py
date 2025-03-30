@@ -253,8 +253,8 @@ async def run_verification_synthesis_step(
     )
 
 
-async def run_ai_pipeline(request: schemas.ProcessQueryRequest) -> schemas.ProcessQueryResponse:
-    """Orkiestruje cały potok AI."""
+async def run_ai_pipeline(request: schemas.ProcessQueryRequest, api_key: str) -> schemas.ProcessQueryResponse:
+    """Orkiestruje cały potok AI, używając podanego klucza API."""
     start_time = datetime.datetime.now(datetime.timezone.utc)
     logger.info(f"Rozpoczęcie przetwarzania zapytania: {request.query[:50]}...")
 
@@ -273,15 +273,17 @@ async def run_ai_pipeline(request: schemas.ProcessQueryRequest) -> schemas.Proce
 
     # Krok 1: Analiza
     logger.info("Krok 1: Analiza zapytania...")
-    analysis_result = await run_analysis_step(request.api_key, request.query, documents_summary)
+    # Użyj api_key przekazanego jako argument
+    analysis_result = await run_analysis_step(api_key, request.query, documents_summary)
     if analysis_result.error:
          logger.error(f"Błąd w kroku analizy: {analysis_result.error}")
          # Można tu zdecydować o przerwaniu potoku lub kontynuacji z domyślną analizą
 
     # Krok 2: Generowanie Perspektyw (równolegle)
     logger.info("Krok 2: Generowanie perspektyw...")
+    # Użyj api_key przekazanego jako argument
     perspective_results = await run_perspective_generation_step(
-        request.api_key, request.query, analysis_result, documents_content
+        api_key, request.query, analysis_result, documents_content
     )
     # Sprawdzenie błędów w perspektywach
     perspective_errors = [p.error for p in perspective_results if p.error]
@@ -290,8 +292,9 @@ async def run_ai_pipeline(request: schemas.ProcessQueryRequest) -> schemas.Proce
 
     # Krok 3: Weryfikacja i Synteza
     logger.info("Krok 3: Weryfikacja i Synteza...")
+    # Użyj api_key przekazanego jako argument
     verification_synthesis_result = await run_verification_synthesis_step(
-        request.api_key, request.query, analysis_result, perspective_results
+        api_key, request.query, analysis_result, perspective_results
     )
     if verification_synthesis_result.error:
          logger.error(f"Błąd w kroku weryfikacji/syntezy: {verification_synthesis_result.error}")

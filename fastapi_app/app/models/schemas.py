@@ -10,7 +10,7 @@ class DocumentInput(BaseModel):
 class ProcessQueryRequest(BaseModel):
     """Model dla żądania do endpointu /process_query."""
     query: str = Field(..., description="Zapytanie użytkownika.")
-    api_key: str = Field(..., description="Klucz API OpenRouter użytkownika.")
+    # Usunięto pole api_key, będzie pobierane ze zmiennych środowiskowych serwera
     documents: Optional[List[DocumentInput]] = Field(None, description="Lista przetworzonych dokumentów jako kontekst.")
 
 class AnalysisResult(BaseModel):

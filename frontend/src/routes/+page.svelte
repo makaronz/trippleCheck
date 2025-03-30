@@ -1,8 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { browser } from '$app/environment'; // Importuj 'browser' do sprawdzania środowiska
 
-  let apiKey = ''; // Klucz API OpenRouter
-  // Usunięto zduplikowaną deklarację apiKey
+  // Usunięto zmienną apiKey
   let query = ''; // Zapytanie użytkownika
   let selectedFiles: FileList | null = null; // Wybrane pliki przez użytkownika
   let processedDocuments: { name: string; content: string; size: number }[] = []; // Przetworzone dokumenty
@@ -12,7 +12,10 @@
   let responseData: any = null; // Odpowiedź z backendu
   let errorMessage = ''; // Komunikat błędu
 
-  const FASTAPI_URL = 'http://127.0.0.1:8000'; // Adres backendu FastAPI
+  // Odczytaj URL backendu ze zmiennej środowiskowej Vite
+  // Użyj wartości domyślnej dla lokalnego rozwoju, jeśli zmienna nie jest ustawiona
+  const FASTAPI_URL = browser ? (import.meta.env.VITE_FASTAPI_URL || 'http://127.0.0.1:8000') : 'http://127.0.0.1:8000';
+  console.log(`Using FastAPI backend URL: ${FASTAPI_URL}`); // Log do debugowania
 
   // Funkcja do odczytu pliku jako base64
   function readFileAsBase64(file: File): Promise<string> {
@@ -90,10 +93,7 @@
 
   // Funkcja wysyłająca zapytanie do backendu
   async function submitQuery() {
-    if (!apiKey.trim()) {
-      errorMessage = 'Proszę wprowadzić klucz API OpenRouter.';
-      return;
-    }
+    // Usunięto sprawdzanie apiKey
     if (!query.trim()) {
       errorMessage = 'Proszę wprowadzić zapytanie.';
       return;
@@ -104,9 +104,9 @@
     responseData = null;
 
     // Przygotowanie danych żądania, użyj przetworzonych dokumentów
+    // Usunięto api_key z ciała żądania
     const requestBody = {
       query: query,
-      api_key: apiKey,
       documents: processedDocuments, // Przekaż przetworzone dokumenty
     };
 
@@ -208,14 +208,10 @@
 
     <section class="card input-section">
       <h2 class="card-title">Wejście Użytkownika</h2>
-    <div class="form-group">
-      <label for="apiKey">Klucz API OpenRouter:</label>
-      <input type="password" id="apiKey" bind:value={apiKey} placeholder="Wklej swój klucz API..." required />
-      <small>Twój klucz API jest używany tylko do komunikacji z OpenRouter.</small>
-    </div>
+    <!-- Usunięto pole na klucz API -->
 
     <div class="form-group">
-        <label for="documents">Załącz dokumenty (opcjonalnie, maks. 4):</label>
+        <label for="documents">Załącz dokumenty (opcjonalnie):</label> <!-- Usunięto limit z etykiety -->
         <input type="file" id="documents" on:change={handleFileSelection} multiple accept=".txt,.pdf,.md,.jpg,.jpeg,.png,.gif,.bmp,.tiff" />
          {#if isProcessingFiles}
              <small>Trwa przetwarzanie plików...</small>
