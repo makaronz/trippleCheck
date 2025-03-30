@@ -8,12 +8,12 @@ import logging
 
 # Zależności do przetwarzania plików
 try:
-    import fitz  # PyMuPDF
+    import fitz  # type: ignore # PyMuPDF
 except ImportError:
     fitz = None
 
 try:
-    import ocrmypdf
+    import ocrmypdf # type: ignore
     # Sprawdzenie, czy Tesseract jest dostępny dla ocrmypdf
     # ocrmypdf.check() # Może rzucić wyjątek, jeśli Tesseracta brakuje
 except ImportError:
