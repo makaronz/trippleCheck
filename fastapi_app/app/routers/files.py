@@ -3,6 +3,8 @@ import logging
 
 from ..models import schemas
 from ..utils import file_processor
+from ..models.file_models import FileProcessingRequest, FileProcessingResponse
+from ..utils.logger import get_logger
 
 # Logger configuration
 logging.basicConfig(level=logging.INFO)
@@ -23,32 +25,42 @@ router = APIRouter(
         500: {"model": schemas.ErrorResponse, "description": "Internal server error during file processing"}
     }
 )
-async def process_single_file(
-    request_body: schemas.FileProcessingRequest = Body(...)
-):
+async def process_single_file(file_data: FileProcessingRequest) -> FileProcessingResponse:
     """
-    Endpoint for processing a single file.
+    Process a single uploaded file.
+    
+    Args:
+        file_data (FileProcessingRequest): Request containing filename and base64 encoded content
+        
+    Returns:
+        FileProcessingResponse: Response containing processing results
+        
+    Raises:
+        HTTPException: If file processing fails
     """
-    logger.info(f"Received /process_file request for file: {request_body.filename}")
-
     try:
-        # Call the processing function from utils
-        extracted_content = file_processor.process_uploaded_file_data(
-            filename=request_body.filename,
-            file_data_base64=request_body.file_data_base64
+        # First validate and scan the file
+        is_valid, mime_type, error_message = validate_file_type_and_scan(file_data.content)
+        if not is_valid:
+            raise ValueError(error_message)
+            
+        # Process the file if validation passes
+        result = process_uploaded_file_data(file_data.filename, file_data.content)
+        return FileProcessingResponse(
+            success=True,
+            filename=file_data.filename,
+            mime_type=mime_type,
+            processed_content=result
         )
-        logger.info(f"Successfully processed file: {request_body.filename}")
-        return schemas.FileProcessingResponse(content=extracted_content)
-
+        
     except ValueError as ve:
-        # Validation errors or unsupported file type
-        logger.error(f"Error processing file {request_body.filename}: {ve}", exc_info=True)
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(ve))
+        logger.error(f"Validation error processing file {file_data.filename}: {str(ve)}")
+        raise HTTPException(status_code=400, detail=str(ve))
+        
     except RuntimeError as re:
-        # Runtime errors (e.g., missing Tesseract, PyPDF2)
-        logger.error(f"Runtime error processing file {request_body.filename}: {re}", exc_info=True)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(re))
+        logger.error(f"Runtime error processing file {file_data.filename}: {str(re)}")
+        raise HTTPException(status_code=500, detail=str(re))
+        
     except Exception as e:
-        # Other unexpected errors
-        logger.critical(f"Unexpected server error processing file {request_body.filename}: {e}", exc_info=True)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"An internal server error occurred: {e}")
+        logger.error(f"Unexpected error processing file {file_data.filename}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
