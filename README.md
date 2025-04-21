@@ -5,13 +5,28 @@ A web application featuring a FastAPI backend and a SvelteKit frontend. It utili
 ## Features
 
 *   Processes natural language queries.
-*   Supports uploading `.txt`, `.pdf`, `.md`, `.jpg`, `.jpeg`, `.png`, `.gif`, `.bmp`, `.tiff` files as additional context (OCR for images).
+*   Supports uploading multiple file formats:
+    - Documents: `.txt`, `.pdf`, `.md`, `.doc`, `.docx`, `.odt`, `.rtf`
+    - Spreadsheets: `.xlsx`, `.xls`, `.ods`, `.csv`
+    - Presentations: `.pptx`, `.ppt`, `.odp`
+    - Images: `.jpg`, `.jpeg`, `.png`, `.gif`, `.bmp`, `.tiff` (with OCR)
+    - Archives: `.zip`, `.rar`
+    - Markup: `.xml`, `.html`
+    - E-books: `.epub`
 *   Utilizes AI models from OpenRouter.
 *   Features a 3-step AI processing pipeline:
     1.  **Analysis:** Understands the query and context.
     2.  **Perspective Generation:** Creates three distinct perspectives (Informative, Contrarian, Complementary) in parallel.
     3.  **Verification & Synthesis:** Evaluates the perspectives using Google Search, compares them, and synthesizes a final, verified answer.
 *   Pixel art styled user interface built with SvelteKit.
+
+## System Requirements
+
+*   Python 3.8 or higher
+*   Node.js 16 or higher
+*   Tesseract OCR 5.0 or higher (for image processing)
+*   At least 4GB RAM
+*   500MB free disk space
 
 ## Local Setup
 
@@ -50,9 +65,10 @@ A web application featuring a FastAPI backend and a SvelteKit frontend. It utili
         # VITE_FASTAPI_URL=http://127.0.0.1:8000
         ```
     *   Replace `your_openrouter_api_key` with your actual key.
-6.  **(Optional) Install Tesseract OCR:**
-    *   If you want to process image files (`.jpg`, `.png`, etc.), you need to install Tesseract OCR: [Tesseract Installation Instructions](https://github.com/tesseract-ocr/tesseract#installing-tesseract).
-    *   Ensure Tesseract is added to your system's `PATH` environment variable. The application uses `ocrmypdf` and `pytesseract` which rely on the system's Tesseract installation.
+6.  **Install Required System Dependencies:**
+    *   **Tesseract OCR** for image processing
+    *   **LibreOffice** for document conversion (optional)
+    *   **Unrar** for RAR archive support (optional)
 7.  **Run the application (Development Mode):**
     *   **Terminal 1 (Backend):**
         ```bash
@@ -79,6 +95,12 @@ The application is configured for deployment on [Render](https://render.com/) us
 *   **Start Command:** Uses Gunicorn to run the FastAPI application (`cd fastapi_app && gunicorn ... app.main:app ...`).
 *   **Environment Variables on Render:** You **must** set the `OPENROUTER_API_KEY` secret environment variable in the Render service settings. The `PYTHON_VERSION` is set in `render.yaml`.
 
-Render automatically detects `render.yaml` when creating a "Blueprint" service connected to your GitHub repository. Pushing changes to the connected branch will trigger a new deployment.
+**Note on File Processing:** Some file processing features may require additional system dependencies (Tesseract OCR, LibreOffice, etc.) which need to be installed separately on the deployment server.
 
-**Note on OCR:** Tesseract OCR is **not** installed by default in the Render Python environment defined in `render.yaml`. Image OCR functionality will **not** work in the deployed version unless you modify the deployment (e.g., by using a Dockerfile that includes Tesseract).
+## Contributing
+
+Please read our [Contributing Guidelines](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
