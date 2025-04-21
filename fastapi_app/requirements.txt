@@ -1,18 +1,44 @@
-fastapi
-uvicorn[standard] # ASGI server with standard dependencies (like websockets)
+fastapi==0.68.1
+uvicorn==0.15.0
 httpx # Async HTTP client for calling OpenRouter API
 python-dotenv # For loading environment variables from .env
-pydantic # For data validation
+pydantic==1.8.2
 gunicorn # Production ASGI/WSGI server for Render
 
 # Dependencies for file processing
 Pillow # Image processing (needed by pytesseract and potentially ocrmypdf)
 pytesseract # Python wrapper for Tesseract OCR
 markdownify # Markdown conversion
-beautifulsoup4 # HTML parsing (used by markdownify)
+beautifulsoup4>=4.12.2 # HTML parsing (used by markdownify)
 markdown # Markdown parsing
 PyMuPDF # Advanced PDF text extraction (replaces PyPDF2)
 ocrmypdf # OCR for image-based PDFs (depends on tesseract-ocr being installed system-wide)
 
+# Added for new file formats
+openpyxl>=3.1.2 # Excel (.xlsx) support
+xlrd>=2.0.1 # Excel (.xls) support
+python-pptx>=0.6.21 # PowerPoint support
+python-docx>=0.8.11 # Word documents support
+striprtf>=0.0.22 # RTF support
+rarfile>=4.0 # RAR archive support
+
+# Added for OpenDocument and XML support
+odfpy>=1.4.1 # OpenDocument format support
+lxml>=4.9.3 # XML processing with XPath support
+defusedxml>=0.7.1 # Safe XML parsing
+
+# Added for HTML, EPUB and enhanced XML processing
+html2text>=2020.1.16 # HTML to markdown/text conversion
+EbookLib>=0.18 # EPUB processing
+cssselect>=1.2.0 # CSS selectors for lxml
+html5lib>=1.1 # Robust HTML parsing
+readability-lxml>=0.8.1 # Article extraction from HTML
+xmltodict>=0.13.0 # XML to dictionary conversion
+
 # Optional for language detection
 # langdetect
+
+# Added for file validation and virus scanning
+python-magic==0.4.27
+python-clamd>=1.0.2
+python-multipart==0.0.5
