@@ -2,6 +2,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 from dotenv import load_dotenv
 import os
 from pathlib import Path
@@ -10,13 +13,20 @@ from pathlib import Path
 load_dotenv()
 
 # Import routers (after loading .env)
-from .routers import process, files # Added files import
+from .routers import process, files
+
+# Initialize rate limiter
+limiter = Limiter(key_func=get_remote_address)
 
 app = FastAPI(
     title="trippleCheck",
     description="A multi-perspective AI agent application with an asynchronous pipeline.",
     version="1.0.0"
 )
+
+# Add rate limiter to the app
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Define the path to the static files directory (frontend assets)
 static_files_dir = Path(__file__).parent / "static" / "dist"
@@ -34,6 +44,7 @@ if static_files_dir.exists():
     app.mount("/", StaticFiles(directory=str(static_files_dir), html=True), name="static")
 
     @app.get("/", include_in_schema=False)
+    @limiter.limit("60/minute")  # Limit homepage access
     async def serve_spa():
         """Serve the main HTML file of the SvelteKit application (Single Page Application)"""
         index_path = static_files_dir / "index.html"
@@ -43,28 +54,27 @@ if static_files_dir.exists():
 else:
     # Fallback when the static files directory does not exist
     @app.get("/", tags=["General"])
+    @limiter.limit("60/minute")  # Limit homepage access
     async def read_root():
         """Basic endpoint to check if the application is running."""
         return {"message": "API is running correctly. Frontend is not available."}
 
-# CORS Configuration
-
-# Origins parameters are converted to regex
+# CORS Configuration with more restrictive settings
 origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "https://pixel-pasta-ai-app.onrender.com",
-    # Add other production domains if needed
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins, # Allow requests from these origins
+    allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"], # Allow all methods (GET, POST, etc.)
-    allow_headers=["*"], # Allow all headers
+    allow_methods=["GET", "POST"],  # Restrict to only needed methods
+    allow_headers=["*"],
+    max_age=3600,  # Cache preflight requests for 1 hour
 )
 
 if __name__ == "__main__":

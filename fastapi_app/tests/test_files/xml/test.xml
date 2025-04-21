@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root>
+    <person id="1">
+        <name>Jan Kowalski</name>
+        <age>30</age>
+        <address>
+            <street>Długa 1</street>
+            <city>Warszawa</city>
+            <country>Polska</country>
+        </address>
+        <hobbies>
+            <hobby>czytanie</hobby>
+            <hobby>podróże</hobby>
+            <hobby>sport</hobby>
+        </hobbies>
+    </person>
+    <person id="2">
+        <name>Anna Nowak</name>
+        <age>25</age>
+        <address>
+            <street>Krótka 2</street>
+            <city>Kraków</city>
+            <country>Polska</country>
+        </address>
+        <hobbies>
+            <hobby>muzyka</hobby>
+            <hobby>taniec</hobby>
+        </hobbies>
+    </person>
+</root> 

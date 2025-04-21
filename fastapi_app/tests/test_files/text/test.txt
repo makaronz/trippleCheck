@@ -1,0 +1,7 @@
+To jest przykładowy plik tekstowy.
+Zawiera kilka linii tekstu
+do testowania funkcjonalności przetwarzania plików.
+
+Linia z   wieloma   spacjami.
+Linia z symbolami: !@#$%^&*()
+Linia z polskimi znakami: ąęćżźńłóś 
