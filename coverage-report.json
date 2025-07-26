@@ -1,0 +1,108 @@
+{
+  "project": "trippleCheck",
+  "timestamp": "2024-07-27",
+  "backend": {
+    "source_files": 17,
+    "source_lines": 1487,
+    "test_files": 3,
+    "test_lines": 712,
+    "estimated_coverage": 71.82246133154001,
+    "files": [
+      {
+        "file": "app/__init__.py",
+        "lines": 0
+      },
+      {
+        "file": "app/main.py",
+        "lines": 61
+      },
+      {
+        "file": "app/routers/files.py",
+        "lines": 52
+      },
+      {
+        "file": "app/routers/__init__.py",
+        "lines": 2
+      },
+      {
+        "file": "app/routers/process.py",
+        "lines": 50
+      },
+      {
+        "file": "app/utils/openrouter_client.py",
+        "lines": 116
+      },
+      {
+        "file": "app/utils/__init__.py",
+        "lines": 2
+      },
+      {
+        "file": "app/utils/logger.py",
+        "lines": 36
+      },
+      {
+        "file": "app/utils/file_processor.py",
+        "lines": 694
+      },
+      {
+        "file": "app/utils/dependencies.py",
+        "lines": 18
+      },
+      {
+        "file": "app/models/__init__.py",
+        "lines": 0
+      },
+      {
+        "file": "app/models/schemas.py",
+        "lines": 51
+      },
+      {
+        "file": "app/models/file_models.py",
+        "lines": 15
+      },
+      {
+        "file": "app/prompts/__init__.py",
+        "lines": 1
+      },
+      {
+        "file": "app/prompts/prompts.py",
+        "lines": 135
+      },
+      {
+        "file": "app/services/pipeline_service.py",
+        "lines": 253
+      },
+      {
+        "file": "app/services/__init__.py",
+        "lines": 1
+      }
+    ]
+  },
+  "frontend": {
+    "source_files": 3,
+    "source_lines": 522,
+    "test_files": 0,
+    "coverage_setup": "Recommended: Vitest + @vitest/ui",
+    "files": [
+      {
+        "file": "app.d.ts",
+        "lines": 5
+      },
+      {
+        "file": "lib/index.ts",
+        "lines": 0
+      },
+      {
+        "file": "routes/+page.svelte",
+        "lines": 517
+      }
+    ]
+  },
+  "recommendations": [
+    "Set up pytest-cov for accurate backend coverage measurement",
+    "Configure Vitest for frontend testing and coverage",
+    "Add integration tests for API endpoints",
+    "Implement E2E tests for critical user workflows",
+    "Set up coverage reporting in CI/CD pipeline"
+  ]
+}

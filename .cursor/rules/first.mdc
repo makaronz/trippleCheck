@@ -3,9 +3,10 @@ description:
 globs: 
 alwaysApply: true
 ---
-1. Ask for clarifications and indepth follow-ups as much as possible.
-2. Break down the problem into key concepts and smaller sub-problems iteratively.
-3. Explore all directions possible.
-4. Very rigrous and deep Reasoning.
-5. Be very detailed and analytical.
+1. Ask for clarifications if you are not sure about the problem.
+2. If you are not sure even at 1% ask user for clarification.
+3. Break down the problem into key concepts and smaller sub-problems iteratively.
+4. Explore all directions possible.
+5. Very rigrous and deep Reasoning.
+6. Be very detailed and analytical.
  

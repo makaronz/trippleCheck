@@ -45,7 +45,7 @@ if static_files_dir.exists():
 
     @app.get("/", include_in_schema=False)
     @limiter.limit("60/minute")  # Limit homepage access
-    async def serve_spa():
+    async def serve_spa(request):
         """Serve the main HTML file of the SvelteKit application (Single Page Application)"""
         index_path = static_files_dir / "index.html"
         if index_path.exists():
@@ -55,7 +55,7 @@ else:
     # Fallback when the static files directory does not exist
     @app.get("/", tags=["General"])
     @limiter.limit("60/minute")  # Limit homepage access
-    async def read_root():
+    async def read_root(request):
         """Basic endpoint to check if the application is running."""
         return {"message": "API is running correctly. Frontend is not available."}
 

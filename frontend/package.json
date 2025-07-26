@@ -9,7 +9,16 @@
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
+		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+		"lint": "eslint src --ext .ts,.svelte",
+		"lint:fix": "eslint src --ext .ts,.svelte --fix",
+		"format": "prettier --write src/**/*.{ts,svelte,css,html}",
+		"format:check": "prettier --check src/**/*.{ts,svelte,css,html}",
+		"test": "vitest",
+		"test:ui": "vitest --ui",
+		"test:coverage": "vitest --coverage",
+		"build:analyze": "vite build --mode analyze",
+		"clean": "rm -rf build .svelte-kit"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-auto": "^4.0.0",

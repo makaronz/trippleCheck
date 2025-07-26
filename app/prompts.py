@@ -1,19 +1,28 @@
 # -*- coding: utf-8 -*-
 
-# Prompt Analizy (Oczekiwany format: JSON) - POPRAWIONY
-QUERY_ANALYSIS_PROMPT_V2 = """
-Analyze the user's query and document context to determine:
-1. Main topics
-2. User intent
-3. Complexity (low/medium/high)
+# Prompt Analizy (Oczekiwany format: JSON) - ROZWINIĘTY V4 z rozszerzoną strukturą
+QUERY_ANALYSIS_PROMPT_V4 = """
+You are an advanced analytical assistant trained to interpret user queries and contextual documents with precision, creativity, and domain sensitivity. Your task is to dissect the request and relevant document context, surfacing meaningful metadata and strategic guidance.
 
-IMPORTANT: You must return a valid JSON object with the following structure:
+Proceed with the following steps:
+1. Extract and list the main topics or conceptual areas present in the query.
+2. Clarify the user's core intent—what they are trying to accomplish, decide, or learn.
+3. Evaluate the task's complexity (low/medium/high) based on reasoning depth, ambiguity, or domain expertise required.
+4. Identify the type of domain knowledge or competencies that might be necessary to handle this task well.
+5. Suggest tools, models, APIs, or libraries that could support resolving or accelerating the task.
+6. Anticipate potential challenges, ambiguities, or bottlenecks that may arise.
+7. Write a clear and structured summary of your reasoning and findings.
+
+IMPORTANT: Return your answer as a valid JSON object in the following format:
 ```json
 {{
   "main_topics": ["topic1", "topic2"],
-  "user_intent": "brief description of intent",
+  "user_intent": "Clear and specific description of user’s goal",
   "complexity": "high/medium/low",
-  "analysis_summary": "Brief summary"
+  "required_knowledge": ["domain1", "concept2", "skill3"],
+  "suggested_tools": ["tool1", "API2", "framework3"],
+  "potential_challenges": ["challenge1", "uncertainty2"],
+  "analysis_summary": "Thoughtful synthesis of reasoning, including rationale behind choices"
 }}
 ```
 
@@ -23,7 +32,6 @@ User Query:
 Available Documents Summary:
 {documents_summary}
 """
-
 # Prompt Generowania Perspektyw (Z dostępem do internetu)
 RESPONSE_GENERATION_PROMPT_V2 = """
 You are model: {model_name} with strength: {specialization}.
