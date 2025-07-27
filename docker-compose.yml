@@ -5,15 +5,24 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.backend
+      args:
+        # Build-time arguments for non-sensitive defaults
+        - APP_URL=http://localhost:8000
+        - APP_TITLE=trippleCheck
+        - PORT=8000
+        - HOST=0.0.0.0
     ports:
       - "8000:8000"
     environment:
+      # Runtime environment variables (must be provided externally)
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
-      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
-      - APP_URL=http://localhost:8000
-      - APP_TITLE=trippleCheck
-    env_file:
-      - .env
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - SECRET_KEY=${SECRET_KEY}
+      # Optional variables with defaults
+      - APP_URL=${APP_URL:-http://localhost:8000}
+      - APP_TITLE=${APP_TITLE:-trippleCheck}
+      - PORT=${PORT:-8000}
+      - HOST=${HOST:-0.0.0.0}
     volumes:
       - ./fastapi_app:/app
     restart: unless-stopped

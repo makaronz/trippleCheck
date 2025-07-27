@@ -56,15 +56,26 @@ A web application featuring a FastAPI backend and a SvelteKit frontend. It utili
     ```
 5.  **Configure environment variables:**
     *   Create a file named `.env` in the **root** directory of the project (where `render.yaml` is).
-    *   Add your OpenRouter API key:
+    *   Add your OpenRouter API key and other required variables:
         ```dotenv
-        # Used by the FastAPI backend
+        # Required: OpenRouter API key for AI processing
         OPENROUTER_API_KEY=your_openrouter_api_key
-
-        # Optional: Define if frontend runs on a different port during local dev
-        # VITE_FASTAPI_URL=http://127.0.0.1:8000
+        
+        # Required: Secret key for security (generate a secure random key)
+        SECRET_KEY=your_secure_secret_key_here
+        
+        # Optional: Google API key for verification step
+        GOOGLE_API_KEY=your_google_api_key_here
+        
+        # Optional: Application configuration
+        APP_URL=http://localhost:8000
+        APP_TITLE=trippleCheck
+        
+        # Optional: Frontend development
+        VITE_FASTAPI_URL=http://127.0.0.1:8000
         ```
-    *   Replace `your_openrouter_api_key` with your actual key.
+    *   Replace the placeholder values with your actual keys.
+    *   **Security Note:** Never commit the `.env` file to version control. It's already in `.gitignore`.
 6.  **Install Required System Dependencies:**
     *   **Tesseract OCR** for image processing
     *   **LibreOffice** for document conversion (optional)
@@ -96,6 +107,43 @@ The application is configured for deployment on [Render](https://render.com/) us
 *   **Environment Variables on Render:** You **must** set the `OPENROUTER_API_KEY` secret environment variable in the Render service settings. The `PYTHON_VERSION` is set in `render.yaml`.
 
 **Note on File Processing:** Some file processing features may require additional system dependencies (Tesseract OCR, LibreOffice, etc.) which need to be installed separately on the deployment server.
+
+## Docker Deployment
+
+The application can be deployed using Docker with secure environment variable management.
+
+### Prerequisites
+
+*   Docker and Docker Compose installed
+*   OpenRouter API key
+*   Secure secret key
+
+### Quick Start with Docker
+
+1.  **Set environment variables:**
+    ```bash
+    export OPENROUTER_API_KEY="your_actual_api_key"
+    export SECRET_KEY="your_secure_secret_key"
+    export GOOGLE_API_KEY="your_google_api_key"  # Optional
+    ```
+
+2.  **Build and run with Docker Compose:**
+    ```bash
+    docker-compose up --build
+    ```
+
+3.  **Access the application:**
+    *   Frontend: `http://localhost:80`
+    *   Backend API: `http://localhost:8000`
+
+### Security Features
+
+*   **No sensitive data in images:** Environment variables are injected at runtime
+*   **Environment validation:** Container validates required variables before startup
+*   **Non-root user:** Container runs as `appuser` instead of root
+*   **Health checks:** Built-in health monitoring
+
+For detailed security guidelines, see [docker/SECURITY.md](docker/SECURITY.md).
 
 ## Contributing
 

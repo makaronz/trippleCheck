@@ -44,7 +44,11 @@ check_venv() {
 
 # Activate virtual environment
 activate_venv() {
-    source "$VENV_PATH/bin/activate"
+    if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
+        source "$VENV_PATH/Scripts/activate"
+    else
+        source "$VENV_PATH/bin/activate"
+    fi
 }
 
 # Commands
@@ -103,7 +107,7 @@ test-coverage() {
     log_info "Running tests with coverage..."
     activate_venv
     cd "$PROJECT_ROOT"
-    pytest --cov-report=html
+    pytest --cov=fastapi_app --cov-report=html --cov-report=term
     log_success "Coverage report generated in htmlcov/"
 }
 
@@ -144,8 +148,9 @@ clean() {
     log_info "Cleaning up build artifacts..."
     
     # Python
-    find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
-    find . -type f -name "*.pyc" -delete 2>/dev/null || true
+    # Python
+    find "$PROJECT_ROOT" -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+    find "$PROJECT_ROOT" -type f -name "*.pyc" -delete 2>/dev/null || true
     rm -rf .pytest_cache/ htmlcov/ .coverage 2>/dev/null || true
     
     # Frontend

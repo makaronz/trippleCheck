@@ -7,32 +7,43 @@ from typing import List, Dict, Any, Optional
 from ..utils.openrouter_client import call_openrouter_api_async
 from ..prompts import prompts
 from ..models import schemas
+from ..routers.admin import get_current_models, DEFAULT_SETTINGS
 
 # Logger configuration
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Model definitions for each step (according to the final plan)
-MODEL_CONFIG = {
-    "analysis": "openchat/openchat-3.5-0106",
-    "perspective_1": {
-        "model": "meta-llama/llama-3-70b-instruct", # or another Llama
-        "type": "Informative"
-    },
-    "perspective_2": {
-        "model": "teknium/openhermes-2.5-mistral-7b", # Changed model to OpenHermes
-        "type": "Contrarian"
-    },
-    "perspective_3": {
-        "model": "qwen/qwen-2.5-coder-32b-instruct:free", # Changed model to Qwen Coder
-        "type": "Complementary"
-    },
-    "verification_synthesis": "google/gemini-2.5-pro-exp-03-25:free" # or exact name
-}
+# Note: Model default values are centralized in admin.py DEFAULT_SETTINGS
+# to ensure consistency across the application and avoid duplication.
+
+def get_model_config() -> Dict[str, Any]:
+    """Get model configuration from admin settings with fallback defaults."""
+    current_models = get_current_models()
+    default_models = DEFAULT_SETTINGS.get("models", {})
+    
+    logger.debug(f"Loading model configuration: current_models={current_models}, default_models={default_models}")
+    
+    return {
+        "analysis": current_models.get("analysis") or default_models.get("analysis"),
+        "perspective_1": {
+            "model": current_models.get("perspective_informative") or default_models.get("perspective_informative"),
+            "type": "Informative"
+        },
+        "perspective_2": {
+            "model": current_models.get("perspective_contrarian") or default_models.get("perspective_contrarian"),
+            "type": "Contrarian"
+        },
+        "perspective_3": {
+            "model": current_models.get("perspective_complementary") or default_models.get("perspective_complementary"),
+            "type": "Complementary"
+        },
+        "verification_synthesis": current_models.get("synthesis") or default_models.get("synthesis")
+    }
 
 async def run_analysis_step(api_key: str, query: str, documents_summary: str) -> schemas.AnalysisResult:
     """Executes the query analysis step."""
-    model = MODEL_CONFIG["analysis"]
+    model_config = get_model_config()
+    model = model_config["analysis"]
     prompt = prompts.QUERY_ANALYSIS_PROMPT.format(
         query=query,
         documents_summary=documents_summary
@@ -92,10 +103,11 @@ async def run_perspective_generation_step(
     documents_content: str
 ) -> List[schemas.PerspectiveResult]:
     """Executes the perspective generation step in parallel."""
+    model_config = get_model_config()
     perspective_defs = [
-        {"config": MODEL_CONFIG["perspective_1"], "prompt_template": prompts.INFORMATIVE_PERSPECTIVE_PROMPT},
-        {"config": MODEL_CONFIG["perspective_2"], "prompt_template": prompts.CONTRARIAN_PERSPECTIVE_PROMPT},
-        {"config": MODEL_CONFIG["perspective_3"], "prompt_template": prompts.COMPLEMENTARY_PERSPECTIVE_PROMPT},
+        {"config": model_config["perspective_1"], "prompt_template": prompts.INFORMATIVE_PERSPECTIVE_PROMPT},
+        {"config": model_config["perspective_2"], "prompt_template": prompts.CONTRARIAN_PERSPECTIVE_PROMPT},
+        {"config": model_config["perspective_3"], "prompt_template": prompts.COMPLEMENTARY_PERSPECTIVE_PROMPT},
     ]
 
     tasks = []
@@ -177,7 +189,8 @@ async def run_verification_synthesis_step(
     perspectives: List[schemas.PerspectiveResult]
 ) -> schemas.VerificationSynthesisResult:
     """Executes the verification and synthesis step."""
-    model = MODEL_CONFIG["verification_synthesis"]
+    model_config = get_model_config()
+    model = model_config["verification_synthesis"]
     prompt = "Error formatting prompt." # Default value
     raw_response = ""
     error_message = None

@@ -52,7 +52,37 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Copy application code
 COPY fastapi_app/ ./
-COPY .env.example .env
+
+# Create environment validation script
+RUN echo '#!/bin/bash\n\
+# Environment validation script\n\
+set -e\n\
+\n\
+# Validate required environment variables\n\
+required_vars=("OPENROUTER_API_KEY" "SECRET_KEY")\n\
+\n\
+for var in "${required_vars[@]}"; do\n\
+    if [ -z "${!var}" ]; then\n\
+        echo "Error: Required environment variable $var is not set"\n\
+        exit 1\n\
+    fi\n\
+done\n\
+\n\
+# Validate API key format (basic check)\n\
+if [[ ! "$OPENROUTER_API_KEY" =~ ^[a-zA-Z0-9_-]+$ ]]; then\n\
+    echo "Warning: OPENROUTER_API_KEY format may be invalid"\n\
+fi\n\
+\n\
+# Set default values for optional variables\n\
+export APP_URL="${APP_URL:-http://localhost:8000}"\n\
+export APP_TITLE="${APP_TITLE:-trippleCheck}"\n\
+export PORT="${PORT:-8000}"\n\
+export HOST="${HOST:-0.0.0.0}"\n\
+\n\
+echo "Environment validation passed"\n\
+\n\
+# Start the application\n\
+exec "$@"' > /app/entrypoint.sh && chmod +x /app/entrypoint.sh
 
 # Set ownership to app user
 RUN chown -R appuser:appuser /app
@@ -66,6 +96,9 @@ HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
 
 # Expose port
 EXPOSE 8000
+
+# Use entrypoint for environment validation
+ENTRYPOINT ["/app/entrypoint.sh"]
 
 # Start application
 CMD ["gunicorn", "app.main:app", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000"]

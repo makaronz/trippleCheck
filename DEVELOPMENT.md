@@ -130,7 +130,7 @@ APP_TITLE=trippleCheck
 ### Optional Environment Variables
 ```bash
 GOOGLE_API_KEY=your_google_api_key_here  # For verification step
-VITE_FASTAPI_URL=http://127.0.0.1:8000   # Frontend API URL
+VITE_FASTAPI_URL=http://127.0.0.1:8000   # Frontend API URL (development only - uses relative URLs in production)
 SECRET_KEY=dev-secret-key                 # Session security
 ```
 

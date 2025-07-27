@@ -6,13 +6,13 @@ from typing import Dict, Any
 from ..models import schemas
 from ..services import pipeline_service
 from ..utils.dependencies import get_openrouter_api_key # Dependency to get the API key
+from .admin import get_current_api_key
 
 # Logger configuration
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
-    prefix="/api/v1", # Prefix for all routes in this router
     tags=["AI Pipeline"], # Tag for Swagger documentation
 )
 
@@ -27,15 +27,17 @@ router = APIRouter(
     }
 )
 async def process_query_endpoint(
-    request_body: schemas.ProcessQueryRequest = Body(...), # Get the request body and validate
-    api_key: str = Depends(get_openrouter_api_key) # Use dependency to get API key from environment variable
+    request_body: schemas.ProcessQueryRequest = Body(...) # Get the request body and validate
 ):
     """
     Endpoint for processing a query through the redesigned AI pipeline.
     """
     logger.info(f"Received /process_query request for query: {request_body.query[:50]}...")
 
-    # Removed API key check from the request body
+    # Get API key from admin settings
+    api_key = get_current_api_key()
+    if not api_key:
+        raise HTTPException(status_code=400, detail="API key not configured. Please configure it in the admin panel.")
 
     try:
         # Run the AI pipeline from the service, passing the API key as an argument

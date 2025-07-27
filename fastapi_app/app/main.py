@@ -13,7 +13,7 @@ from pathlib import Path
 load_dotenv()
 
 # Import routers (after loading .env)
-from .routers import process, files
+from .routers import process, files, admin
 
 # Initialize rate limiter
 limiter = Limiter(key_func=get_remote_address)
@@ -35,6 +35,7 @@ api_app = FastAPI(title="API")
 # Include routers in the API sub-application
 api_app.include_router(process.router)
 api_app.include_router(files.router)
+api_app.include_router(admin.router)
 
 # Mount the API sub-application under the /api/v1 prefix
 app.mount("/api/v1", api_app)

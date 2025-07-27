@@ -7,7 +7,7 @@ import io
 import logging
 import magic
 import hashlib
-import clamd
+# import clamd  # Commented out - optional virus scanning
 from typing import Tuple, Optional, Dict, Any
 from pathlib import Path
 

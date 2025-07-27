@@ -1,0 +1,12 @@
+{
+  "_comment": "Set api_key to '${API_KEY_FROM_ENV}' to read from environment variables (OPENROUTER_API_KEY or API_KEY), or paste your actual API key here",
+  "api_key": "${API_KEY_FROM_ENV}",
+  "models": {
+    "analysis": "qwen/qwen3-coder:free",
+    "perspective_informative": "google/gemma-3n-e2b-it:free",
+    "perspective_contrarian": "deepseek/deepseek-r1-0528:free",
+    "perspective_complementary": "qwen/qwen3-235b-a22b-2507:free",
+    "verification": "mistralai/mistral-small-3.2-24b-instruct:free",
+    "synthesis": "deepseek/deepseek-r1-0528-qwen3-8b:free"
+  }
+}

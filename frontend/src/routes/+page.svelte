@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { browser } from '$app/environment'; // Import 'browser' for environment checks
+  import { getApiBaseUrl } from '$lib/config';
 
   // Removed apiKey variable
   let query = ''; // User query
@@ -12,10 +13,8 @@
   let responseData: any = null; // Response from the backend
   let errorMessage = ''; // Error message
 
-  // In production, use relative paths because backend and frontend are on the same domain
-  // For local development, use the full URL if frontend and backend run on different ports
-  const useRelativeUrls = !import.meta.env.DEV; // Use relative URLs in production mode
-  const apiBaseUrl = useRelativeUrls ? '' : (import.meta.env.VITE_FASTAPI_URL || 'http://127.0.0.1:8000');
+  // Use shared configuration for API URL
+  const apiBaseUrl = getApiBaseUrl();
   console.log(`API base URL: ${apiBaseUrl || '(using relative URLs)'}`);
 
   // Function to read file as base64
@@ -201,7 +200,12 @@
 
 <div class="pixel-background">
   <header class="header-banner">
-      <h1 class="pixel-title">trippleCheck</h1>
+      <div class="header-content">
+        <h1 class="pixel-title">trippleCheck</h1>
+        <nav class="header-nav">
+          <a href="/admin" class="admin-link">🔧 Admin</a>
+        </nav>
+      </div>
   </header>
 
   <main class="container">
@@ -333,9 +337,42 @@
   .header-banner {
       background-color: #0f0f1a;
       padding: 1.5rem 0;
-      text-align: center;
       border-bottom: 3px solid #e040fb; /* Neon pink */
       margin-bottom: 2rem;
+  }
+
+  .header-content {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+  }
+
+  .header-nav {
+      display: flex;
+      gap: 1rem;
+  }
+
+  .admin-link {
+      font-family: 'Press Start 2P', cursive;
+      color: #00ffff;
+      text-decoration: none;
+      font-size: 0.8rem;
+      padding: 0.5rem 1rem;
+      border: 2px solid #00ffff;
+      border-radius: 4px;
+      transition: all 0.3s ease;
+      background: transparent;
+  }
+
+  .admin-link:hover {
+      background: #00ffff;
+      color: #161625;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0, 255, 255, 0.4);
   }
 
   .pixel-title {

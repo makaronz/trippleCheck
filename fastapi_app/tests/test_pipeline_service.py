@@ -411,4 +411,6 @@ class TestFullPipeline:
         
         assert isinstance(result, schemas.ProcessQueryResponse)
         assert result.analysis.error == "Analysis failed"
-        # Pipeline should continue even with analysis error
+        # Verify pipeline continues despite analysis error
+        assert result.perspectives is not None
+        assert result.verification_synthesis is not None

@@ -11,7 +11,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
-    prefix="/api/v1",
     tags=["File Processing"], # Tag for Swagger documentation
 )
 
