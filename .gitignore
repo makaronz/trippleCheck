@@ -67,7 +67,7 @@ htmlcov/
 .cache/
 .mypy_cache/
 
-# Development dependencies file
-fastapi_app/requirements_dev.txt
+# Development dependencies file - now included in repo
+# fastapi_app/requirements_dev.txt
 cursor_update_memory_bank_and_create_di.md
 TASK_log.md
